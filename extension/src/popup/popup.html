@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+  <title>SurfShadow</title>
+</head>
+<body>
+  <h1>SurfShadow</h1>
+
+  <section id="auth-section">
+    <span id="auth-status">Checking...</span>
+    <button id="btn-auth">Sign in with Google</button>
+  </section>
+
+  <hr>
+
+  <section>
+    <h2>Default Language</h2>
+    <select id="default-lang">
+      <option value="en-US">English</option>
+      <option value="ja-JP">Japanese</option>
+      <option value="zh-CN">Chinese</option>
+      <option value="ko-KR">Korean</option>
+      <option value="es-ES">Spanish</option>
+      <option value="fr-FR">French</option>
+      <option value="de-DE">German</option>
+    </select>
+  </section>
+
+  <section>
+    <h2>Neural / Casual TTS</h2>
+    <p id="tts-note">Azure AI TTS for natural and conversational voices. Sign in to use it.</p>
+  </section>
+
+  <button id="btn-save" class="primary">Save Settings</button>
+  <div id="save-status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

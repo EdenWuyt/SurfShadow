@@ -1,0 +1,17 @@
+name: Cleanup Supabase Audio Cache
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # runs every hour
+  workflow_dispatch:       # allows manual run
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Supabase cleanup function
+        run: |
+          curl -X GET \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SECRET_KEY }}" \
+            https://jfarzdwgmshcucwpoecv.supabase.co/functions/v1/delete-expired-cache-audios
