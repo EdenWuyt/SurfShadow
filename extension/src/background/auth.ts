@@ -41,7 +41,12 @@ export async function signIn(): Promise<{ success: true; email?: string } | { er
   if (!SUPABASE_URL) return { error: 'Supabase not configured' }
 
   const redirectUrl = `https://${chrome.runtime.id}.chromiumapp.org/`
-  const authUrl = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectUrl)}`
+  const authParams = new URLSearchParams({
+    provider: 'google',
+    redirect_to: redirectUrl,
+    prompt: 'select_account',
+  })
+  const authUrl = `${SUPABASE_URL}/auth/v1/authorize?${authParams.toString()}`
 
   return new Promise((resolve) => {
     chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, (responseUrl) => {
