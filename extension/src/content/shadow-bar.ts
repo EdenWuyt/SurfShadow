@@ -111,6 +111,18 @@ function wireSettings(context: BarControllerContext): void {
     if (match) currentLang = match
   })
 
+  void chrome.storage.local.get(['accessToken', 'defaultLanguage']).then((localSettings) => {
+    syncSignedInState(localSettings.accessToken as string | undefined)
+    const storedLang = localSettings.defaultLanguage as string | undefined
+    if (storedLang) {
+      const match = LANGUAGES.find((language) => language.code === storedLang)
+      if (match) {
+        currentLang = match
+        langSelect.value = match.code
+      }
+    }
+  })
+
   void sendMessage({ type: 'GET_SETTINGS' }).then((response) => {
     const settings = response as Settings | null
     syncSignedInState(settings?.accessToken)

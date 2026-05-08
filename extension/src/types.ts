@@ -13,7 +13,6 @@ export interface Settings {
   accessToken?: string
   refreshToken?: string
   defaultLanguage?: string
-  defaultVoice?: string
 }
 
 export interface AudioCacheRow {
@@ -29,6 +28,7 @@ export type Message =
   | { type: 'DELETE_SNIPPET'; text: string; language: string }
   | { type: 'SIGN_IN' }
   | { type: 'GET_SETTINGS' }
+  | { type: 'SAVE_SETTINGS'; defaultLanguage: string }
   | { type: 'SIGN_OUT' }
 
 // Every possible response shape the background worker can return.

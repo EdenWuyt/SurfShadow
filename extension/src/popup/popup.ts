@@ -1,5 +1,4 @@
 import type { Settings } from '../types'
-import { getNeutralVoice } from '../shared/languages'
 
 function parseEmail(token: string): string | null {
   try {
@@ -15,11 +14,7 @@ function $<T extends HTMLElement>(id: string): T {
   return document.getElementById(id) as T
 }
 
-async function loadState(): Promise<void> {
-  const settings = await chrome.storage.local.get([
-    'defaultLanguage', 'accessToken',
-  ]) as Settings
-
+function renderState(settings: Partial<Settings>): void {
   $<HTMLSelectElement>('default-lang').value = settings.defaultLanguage ?? 'en-US'
 
   const authStatus = $<HTMLSpanElement>('auth-status')
@@ -34,6 +29,14 @@ async function loadState(): Promise<void> {
     btnAuth.textContent = 'Sign in with Google'
     btnAuth.dataset.mode = 'signin'
   }
+}
+
+async function loadState(): Promise<void> {
+  const localSettings = await chrome.storage.local.get(['accessToken', 'defaultLanguage'])
+  renderState(localSettings)
+
+  const settings = (await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }) as Settings | null) ?? {}
+  renderState(settings)
 }
 
 $<HTMLButtonElement>('btn-auth').addEventListener('click', async () => {
@@ -59,10 +62,10 @@ $<HTMLButtonElement>('btn-auth').addEventListener('click', async () => {
 $<HTMLButtonElement>('btn-save').addEventListener('click', async () => {
   const language = $<HTMLSelectElement>('default-lang').value
 
-  await chrome.storage.local.set({
+  await chrome.runtime.sendMessage({
+    type: 'SAVE_SETTINGS',
     defaultLanguage: language,
-    defaultVoice: getNeutralVoice(language),
-  } satisfies Partial<Settings>)
+  })
 
   const status = $<HTMLDivElement>('save-status')
   status.textContent = 'Saved'

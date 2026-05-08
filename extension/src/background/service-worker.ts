@@ -1,5 +1,6 @@
 import type { Message, MessageResponse } from '../types'
 import { signIn } from './auth'
+import { saveProfileDefaults } from './profile'
 import { getSettings } from './settings'
 import { deleteSnippet, saveSnippet } from './snippets'
 import { getAudio } from './tts'
@@ -16,6 +17,14 @@ async function handleMessage(message: Message): Promise<MessageResponse> {
       return signIn()
     case 'GET_SETTINGS':
       return getSettings()
+    case 'SAVE_SETTINGS': {
+      const settings = await getSettings()
+      await saveProfileDefaults(
+        settings,
+        message.defaultLanguage,
+      )
+      return { success: true }
+    }
     case 'SIGN_OUT':
       await chrome.storage.local.remove(['accessToken', 'refreshToken'])
       return { success: true }

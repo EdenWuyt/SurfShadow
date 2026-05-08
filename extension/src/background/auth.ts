@@ -1,4 +1,5 @@
 import { SUPABASE_ANON, SUPABASE_URL } from '../config'
+import { ensureProfile } from './profile'
 import { getUserEmail } from './jwt'
 
 export async function refreshAccessToken(
@@ -65,9 +66,22 @@ export async function signIn(): Promise<{ success: true; email?: string } | { er
         return
       }
 
-      chrome.storage.local.set({ accessToken, refreshToken }, () =>
-        resolve({ success: true, email: getUserEmail(accessToken) ?? undefined }),
-      )
+      void chrome.storage.local
+        .set({ accessToken, refreshToken })
+        .then(async () => {
+          const stored = await chrome.storage.local.get([
+            'defaultLanguage',
+          ])
+          await ensureProfile({
+            accessToken,
+            refreshToken: refreshToken ?? undefined,
+            defaultLanguage: stored.defaultLanguage as string | undefined,
+          })
+          resolve({ success: true, email: getUserEmail(accessToken) ?? undefined })
+        })
+        .catch(() => {
+          resolve({ error: 'Unable to initialize profile' })
+        })
     })
   })
 }

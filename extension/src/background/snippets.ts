@@ -1,4 +1,3 @@
-import { getUserId } from './jwt'
 import { getSettings } from './settings'
 import { supabaseFetch } from './supabase'
 
@@ -9,11 +8,9 @@ export async function saveSnippet(
   const settings = await getSettings()
   if (!settings.accessToken) return { error: 'Not signed in' }
 
-  const userId = getUserId(settings.accessToken)
-  const res = await supabaseFetch(settings, '/rest/v1/snippets', {
+  const res = await supabaseFetch(settings, '/functions/v1/create-snippet', {
     method: 'POST',
-    headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify({ user_id: userId, text, language }),
+    body: JSON.stringify({ text, language, tagNames: [] }),
   })
 
   return res.ok ? { success: true } : { error: `Save failed: ${res.status}` }
@@ -26,18 +23,9 @@ export async function deleteSnippet(
   const settings = await getSettings()
   if (!settings.accessToken) return { error: 'Not signed in' }
 
-  const userId = getUserId(settings.accessToken)
-  if (!userId) return { error: 'Not signed in' }
-
-  const params = new URLSearchParams({
-    user_id: `eq.${userId}`,
-    text: `eq.${text}`,
-    language: `eq.${language}`,
-  })
-
-  const res = await supabaseFetch(settings, `/rest/v1/snippets?${params.toString()}`, {
-    method: 'DELETE',
-    headers: { Prefer: 'return=minimal' },
+  const res = await supabaseFetch(settings, '/functions/v1/delete-snippet', {
+    method: 'POST',
+    body: JSON.stringify({ text, language }),
   })
 
   return res.ok ? { success: true } : { error: `Delete failed: ${res.status}` }

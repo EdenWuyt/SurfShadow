@@ -1,10 +1,11 @@
 import type { Settings } from '../types'
 import { refreshAccessToken } from './auth'
 import { isTokenExpired } from './jwt'
+import { ensureProfile } from './profile'
 
 export async function getStoredSettings(): Promise<Settings> {
   return chrome.storage.local.get([
-    'accessToken', 'refreshToken', 'defaultLanguage', 'defaultVoice',
+    'accessToken', 'refreshToken', 'defaultLanguage',
   ]) as Promise<Settings>
 }
 
@@ -12,8 +13,14 @@ export async function getSettings(): Promise<Settings> {
   const settings = await getStoredSettings()
 
   if (!settings.accessToken) return settings
-  if (!isTokenExpired(settings.accessToken)) return settings
-  if (!settings.refreshToken) return settings
+  if (!isTokenExpired(settings.accessToken)) {
+    if (!settings.defaultLanguage) return ensureProfile(settings)
+    return settings
+  }
+  if (!settings.refreshToken) {
+    if (!settings.defaultLanguage) return ensureProfile(settings)
+    return settings
+  }
 
   const refreshed = await refreshAccessToken(settings.refreshToken)
   if ('error' in refreshed) {
@@ -25,9 +32,9 @@ export async function getSettings(): Promise<Settings> {
     }
   }
 
-  return {
+  return ensureProfile({
     ...settings,
     accessToken: refreshed.accessToken,
     refreshToken: refreshed.refreshToken,
-  }
+  })
 }

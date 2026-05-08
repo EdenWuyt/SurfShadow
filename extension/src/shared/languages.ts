@@ -9,7 +9,3 @@ export const LANGUAGES: Language[] = [
   { code: 'fr-FR', label: 'French', voice: 'fr-FR-DeniseNeural', voiceCasual: 'fr-FR-EloiseNeural' },
   { code: 'de-DE', label: 'German', voice: 'de-DE-KatjaNeural', voiceCasual: 'de-DE-AmalaNeural' },
 ]
-
-export function getNeutralVoice(languageCode: string): string {
-  return LANGUAGES.find((language) => language.code === languageCode)?.voice ?? 'en-US-JennyNeural'
-}
