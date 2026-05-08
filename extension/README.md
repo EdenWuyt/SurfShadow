@@ -41,7 +41,7 @@ The extension has three runtime pieces:
 - `src/background/service-worker.ts`
   Handles Azure TTS requests, Supabase requests, auth flow, audio cache lookup/upload, and storage-backed settings.
 - `src/popup/popup.ts`
-  Powers the browser action popup for sign-in, Azure credentials, and default language selection.
+  Powers the browser action popup for sign-in and default language selection.
 
 Shared types live in `src/types.ts`, and Supabase client constants live in `src/config.ts`.
 
