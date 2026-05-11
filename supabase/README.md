@@ -24,6 +24,7 @@ SurfShadow follows the Supabase best practice of **using the client SDK with Row
 - **Why TTS and OCR use Edge Functions**: These require private API keys (`AZURE_SPEECH_KEY`, `AZURE_VISION_KEY`). Exposing these keys in the frontend code would allow anyone to exploit your Azure billing. The Edge Function acts as a secure, authenticated proxy.
 - **Why Snippet Writes use Edge Functions**: Creating or updating a snippet with tags is a complex "transaction." It requires inserting a snippet, deduplicating tags, creating new tags, and mapping them in `snippet_tags`. Doing this on the frontend requires 4-5 network round trips, which is slow and risks race conditions.
 - **Why Practice Recordings use the Client SDK directly**: Uploading a recording is a simple two-step process: upload an audio file, then insert a single row into `practice_recordings`. Both the Storage Bucket and Database Table are fully secured by RLS to guarantee users can only write their own data. Migrating this to an Edge Function would introduce a massive **double-upload penalty** (the browser uploads the audio file to the Edge Function, which then buffers and uploads the exact same file to Storage). Direct client uploads are faster and completely secure.
+- **Why Snippet Reads use the Client SDK directly**: Listing snippets, filters, and paginated reads are handled through direct Supabase queries in the browser with RLS. The current web app uses PostgREST range queries for server-side pagination rather than an additional read Edge Function.
 
 ## Required secrets
 
@@ -306,7 +307,7 @@ alter table audio_cache enable row level security;
 ```sql
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  default_language text not null,
+  default_language text not null default 'en-US',
   quota_used integer not null default 0,
   quota_reset_at timestamptz,
   created_at timestamptz not null default now(),

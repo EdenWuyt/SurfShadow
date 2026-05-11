@@ -5,6 +5,11 @@ const tableName = 'audio_cache'
 const bucketName = Deno.env.get('AUDIO_CACHE_BUCKET') ?? 'audio-cache'
 const batchSize = Number.parseInt(Deno.env.get('AUDIO_CACHE_CLEANUP_BATCH_SIZE') ?? '100', 10) || 100
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+}
 
 const supabase = createClient(supabaseUrl, serviceRoleKey)
 
@@ -52,7 +57,11 @@ async function deleteCacheRows(ids: string[]) {
   if (error) throw error
 }
 
-Deno.serve(async () => {
+Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') {
+    return new Response('ok', { headers: CORS_HEADERS })
+  }
+
   try {
     await assertConnection()
 
@@ -63,15 +72,21 @@ Deno.serve(async () => {
     await deleteStorageObjects(paths)
     await deleteCacheRows(ids)
 
-    return Response.json({
-      ok: true,
-      connected: true,
-      deleted_rows: ids.length,
-      deleted_objects: paths.length,
-      bucket: bucketName,
-    })
+    return Response.json(
+      {
+        ok: true,
+        connected: true,
+        deleted_rows: ids.length,
+        deleted_objects: paths.length,
+        bucket: bucketName,
+      },
+      { headers: CORS_HEADERS },
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Cleanup failed'
-    return Response.json({ ok: false, connected: false, error: message }, { status: 500 })
+    return Response.json(
+      { ok: false, connected: false, error: message },
+      { status: 500, headers: CORS_HEADERS },
+    )
   }
 })

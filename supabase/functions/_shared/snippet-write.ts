@@ -40,6 +40,14 @@ export interface SnippetInput {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
+const MULTI_SPACE = /[ \t]+/g
+const MULTI_BLANK_LINES = /\n{3,}/g
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+}
 
 export function getServiceClient(): SupabaseClient {
   return createClient(supabaseUrl, serviceRoleKey)
@@ -48,23 +56,48 @@ export function getServiceClient(): SupabaseClient {
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...CORS_HEADERS,
+    },
   })
 }
 
+export function corsPreflight(request: Request): Response | null {
+  if (request.method !== 'OPTIONS') return null
+
+  return new Response('ok', {
+    headers: CORS_HEADERS,
+  })
+}
+
+function stripControlChars(value: string): string {
+  return value.replace(CONTROL_CHARS, '')
+}
+
 export function normalizeText(text: string): string {
-  return text.trim()
+  return stripControlChars(text)
+    .replace(/\r\n/g, '\n')
+    .replace(MULTI_SPACE, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(MULTI_BLANK_LINES, '\n\n')
+    .trim()
 }
 
 export function normalizeLanguage(language: string): string {
-  return language.trim()
+  return stripControlChars(language).trim()
 }
 
 export function normalizeTagNames(tagNames: string[]): string[] {
   return Array.from(
     new Set(
       tagNames
-        .map((tagName) => tagName.trim().toLowerCase().replace(/\s+/g, ' '))
+        .map((tagName) =>
+          stripControlChars(tagName)
+            .replace(MULTI_SPACE, ' ')
+            .trim()
+            .toLowerCase(),
+        )
         .filter(Boolean),
     ),
   )

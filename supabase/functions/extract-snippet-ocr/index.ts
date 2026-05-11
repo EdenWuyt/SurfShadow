@@ -18,11 +18,19 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const azureVisionEndpoint = Deno.env.get('AZURE_VISION_ENDPOINT') ?? ''
 const azureVisionKey = Deno.env.get('AZURE_VISION_KEY') ?? ''
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+}
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...CORS_HEADERS,
+    },
   })
 }
 
@@ -48,6 +56,10 @@ function extractText(payload: AzureOcrResponse): string {
 }
 
 Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') {
+    return new Response('ok', { headers: CORS_HEADERS })
+  }
+
   try {
     if (!supabaseUrl || !serviceRoleKey) {
       return json({ error: 'Supabase is not configured' }, 500)

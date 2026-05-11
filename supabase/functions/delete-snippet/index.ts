@@ -1,6 +1,16 @@
-import { getServiceClient, json, normalizeLanguage, normalizeText, requireUserId } from '../_shared/snippet-write.ts'
+import {
+  corsPreflight,
+  getServiceClient,
+  json,
+  normalizeLanguage,
+  normalizeText,
+  requireUserId,
+} from '../_shared/snippet-write.ts'
 
 Deno.serve(async (request) => {
+  const preflight = corsPreflight(request)
+  if (preflight) return preflight
+
   try {
     const userId = await requireUserId(request)
     const input = await request.json() as {

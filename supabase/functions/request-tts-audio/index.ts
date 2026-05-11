@@ -20,11 +20,19 @@ const azureSpeechKey = Deno.env.get('AZURE_SPEECH_KEY') ?? ''
 const azureSpeechRegion = Deno.env.get('AZURE_SPEECH_REGION') ?? ''
 const audioCacheBucket = Deno.env.get('AUDIO_CACHE_BUCKET') ?? 'audio-cache'
 const audioCacheTtlDays = Number.parseInt(Deno.env.get('AUDIO_CACHE_TTL_DAYS') ?? '30', 10) || 30
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+}
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...CORS_HEADERS,
+    },
   })
 }
 
@@ -144,6 +152,10 @@ async function upsertCacheEntry(
 }
 
 Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') {
+    return new Response('ok', { headers: CORS_HEADERS })
+  }
+
   try {
     if (!supabaseUrl || !serviceRoleKey) {
       return json({ error: 'Supabase is not configured' }, 500)
