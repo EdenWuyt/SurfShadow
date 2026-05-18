@@ -1,3 +1,4 @@
+// Lists the supported language and voice combinations used by the extension UI.
 import type { Language } from '../types'
 
 export const LANGUAGES: Language[] = [

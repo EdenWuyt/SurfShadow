@@ -1,3 +1,4 @@
+// Coordinates Shadow Bar behavior including playback, save state, auth, and recording.
 import type { Language, Settings } from '../types'
 import { LANGUAGES } from '../shared/languages'
 import { getSignedInState, sendMessage, setBarAuthSync, setContextInvalidatedHandler, syncSignedInState } from './runtime'

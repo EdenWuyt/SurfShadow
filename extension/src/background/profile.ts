@@ -1,3 +1,4 @@
+// Reads and writes the user's synced profile defaults in Supabase.
 import { LANGUAGES } from '../shared/languages'
 import type { Settings } from '../types'
 import { getUserId } from './jwt'

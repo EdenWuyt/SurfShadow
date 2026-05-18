@@ -1,6 +1,8 @@
+// Sends Supabase HTTP requests with one refresh-and-retry cycle for unauthorized responses.
 import type { Settings } from '../types'
 import { SUPABASE_ANON, SUPABASE_URL } from '../config'
-import { refreshAccessToken } from './auth'
+import { isUnauthorizedStatus } from './response'
+import { clearStoredSession, refreshSession } from './session'
 
 const AUTH_FAILURE_BODY = JSON.stringify({ error: 'auth_required' })
 
@@ -11,30 +13,6 @@ function authFailureResponse(): Response {
       'Content-Type': 'application/json',
     },
   })
-}
-
-async function clearAuthTokens(): Promise<void> {
-  await chrome.storage.local.remove(['accessToken', 'refreshToken'])
-}
-
-async function resolveVerifiedSettings(
-  settings: Settings,
-): Promise<Settings | null> {
-  if (!settings.refreshToken) {
-    return null
-  }
-
-  const refreshed = await refreshAccessToken(settings.refreshToken)
-  if ('error' in refreshed) {
-    await clearAuthTokens()
-    return null
-  }
-
-  return {
-    ...settings,
-    accessToken: refreshed.accessToken,
-    refreshToken: refreshed.refreshToken,
-  }
 }
 
 function createHeaders(
@@ -76,19 +54,18 @@ export async function supabaseFetch(
   options: RequestInit = {},
 ): Promise<Response> {
   let response = await performFetch(path, options, settings.accessToken)
-  if (response.status !== 401 && response.status !== 403) {
+  if (!isUnauthorizedStatus(response.status)) {
     return response
   }
 
-  const refreshedSettings = await resolveVerifiedSettings(settings)
+  const refreshedSettings = await refreshSession(settings)
   if (!refreshedSettings?.accessToken) {
-    await clearAuthTokens()
     return authFailureResponse()
   }
 
   response = await performFetch(path, options, refreshedSettings.accessToken)
-  if (response.status === 401 || response.status === 403) {
-    await clearAuthTokens()
+  if (isUnauthorizedStatus(response.status)) {
+    await clearStoredSession()
     return authFailureResponse()
   }
 

@@ -1,3 +1,4 @@
+// Provides small JWT decoding helpers for user identity and token expiry checks.
 export function getUserId(token: string): string | null {
   try {
     const payload = token.split('.')[1]

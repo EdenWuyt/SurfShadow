@@ -1,4 +1,4 @@
-// Shared types used by the background worker, content script, and popup.
+// Shared message and settings types used across the extension runtime pieces.
 
 export interface Language {
   code: string

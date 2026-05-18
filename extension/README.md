@@ -3,7 +3,7 @@
 SurfShadow is a Chrome extension for language shadowing practice. When you highlight text on a webpage, it opens a floating "Shadow Bar" that lets you:
 
 - play the text with the browser's built-in speech synthesis
-- play higher-quality Azure Neural TTS audio
+- play higher-quality Azure TTS audio
 - save the snippet to Supabase
 - record yourself and play the recording back
 
@@ -17,8 +17,7 @@ Implemented today:
 - content script injected on all pages
 - floating Shadow Bar near the current text selection
 - Web Speech API playback
-- Azure Neural TTS playback
-- Supabase Storage audio caching
+- Supabase Edge Function TTS playback
 - Supabase snippet saving
 - popup UI for Google sign-in and default language
 - microphone recording with graceful fallback when permission is denied
@@ -39,11 +38,11 @@ The extension has three runtime pieces:
 - `src/content/content.ts`
   Injects the Shadow Bar into web pages, handles text selection, plays free TTS, manages recording, and sends background messages for neural audio and saving.
 - `src/background/service-worker.ts`
-  Handles Azure TTS requests, Supabase requests, auth flow, audio cache lookup/upload, and storage-backed settings.
+  Handles TTS requests, Supabase requests, auth flow, and storage-backed settings.
 - `src/popup/popup.ts`
   Powers the browser action popup for sign-in and default language selection.
 
-Shared types live in `src/types.ts`, and Supabase client constants live in `src/config.ts`.
+Shared types live in `src/types.ts`, Supabase client constants live in `src/config.ts`, and the background auth/session helpers live under `src/background/`.
 
 ## Shadow Bar behavior
 
@@ -66,17 +65,21 @@ The extension uses:
 - `chrome.storage.local` for auth state and default language
 - `chrome.identity.launchWebAuthFlow` for Google OAuth through Supabase
 - Supabase REST endpoints for snippet and profile operations
-- Supabase Storage for cached MP3 files
-- build-time Azure Speech config for neural playback
+- Supabase Edge Functions for protected TTS and snippet writes
 
-Neural playback flow:
+TTS playback flow:
 
-1. Hash `(text, language, voice, speed)`
-2. Check the public `audio-cache` bucket for an existing MP3
-3. If missing, call Azure TTS
-4. Return audio to the content script
-5. Upload the MP3 to Supabase Storage
-6. Update the user's monthly quota count in `profiles`
+1. The content script asks the background worker for TTS audio.
+2. The background worker calls the protected `request-tts-audio` Edge Function.
+3. Supabase verifies the JWT before Azure is called.
+4. The Edge Function handles caching and returns audio bytes to the extension.
+
+Session behavior:
+
+1. The popup/background stores Supabase access and refresh tokens in `chrome.storage.local`.
+2. `GET_SETTINGS` validates the current access token with Supabase and refreshes when needed.
+3. Background Supabase requests retry once on `401` / `403`.
+4. If refresh fails or the retried request is still unauthorized, the extension clears stored auth tokens and returns `auth_required`.
 
 ## Development
 
@@ -84,9 +87,7 @@ Neural playback flow:
 
 - Node.js
 - Google Chrome
-- Azure Speech resource for Neural TTS
 - Supabase project configured to match the planned schema
-- `extension/.env` with Azure Speech credentials
 
 ### Install
 
@@ -100,9 +101,26 @@ npm install
 npm run build
 npm run watch
 npm run typecheck
+npm run test
 ```
 
 Build output is written to `dist/`.
+
+### Tests
+
+Run the background unit tests with:
+
+```bash
+npm run test
+```
+
+Current test coverage focuses on the extension's critical background behavior:
+
+- session validation and refresh logic
+- unauthorized-response handling
+- Supabase request retry behavior
+- snippet save/delete/check error mapping
+- shared helper behavior for response parsing and snippet lookup paths
 
 ## Load in Chrome
 
@@ -143,17 +161,7 @@ extension/
 
 ## Notes
 
-- The manifest requests `storage` and `identity` permissions plus host access for Supabase and Azure Speech endpoints.
+- The manifest requests `storage` and `identity` permissions plus host access for Supabase endpoints.
 - The content script runs on `<all_urls>`.
 - The current repo hardcodes Supabase public project values in `src/config.ts`.
-- Azure Speech credentials are injected at build time from `extension/.env`.
 - If microphone permission is denied, recording is disabled but listening and saving still work.
-
-## TODO
-
-- Move Azure Neural TTS behind a Supabase Edge Function so the extension no longer ships the Azure key.
-- Store only a short-lived access token in the extension and require sign-in again on expiry instead of persisting refresh-token-style session renewal client-side.
-
-## Relation to the project plan
-
-`Project_Planning.md` describes a larger product: extension + synced PWA practice app. The extension folder currently covers the Phase 1 browser-extension side and already includes the core shadowing loop, but not the Phase 2 web app.

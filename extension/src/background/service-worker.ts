@@ -1,3 +1,4 @@
+// Routes extension runtime messages to the background auth, snippet, and TTS handlers.
 import type { Message, MessageResponse } from '../types'
 import { signIn } from './auth'
 import { saveProfileDefaults } from './profile'

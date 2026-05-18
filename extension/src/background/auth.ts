@@ -1,3 +1,4 @@
+// Handles Supabase OAuth token validation, refresh, and interactive Google sign-in.
 import { SUPABASE_ANON, SUPABASE_URL } from '../config'
 import { ensureProfile } from './profile'
 import { getUserEmail } from './jwt'

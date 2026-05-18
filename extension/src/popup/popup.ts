@@ -1,3 +1,4 @@
+// Powers the extension popup for auth state display and default language preferences.
 import type { Settings } from '../types'
 
 function parseEmail(token: string): string | null {

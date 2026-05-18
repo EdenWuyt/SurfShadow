@@ -1,3 +1,4 @@
+// Renders the Shadow Bar DOM and exposes imperative view helpers for its controls.
 import type { Language } from '../types'
 
 export interface ShadowBarView {

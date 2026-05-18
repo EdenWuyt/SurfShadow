@@ -1,3 +1,4 @@
+// Wraps runtime messaging and auth-state syncing for the content-script UI.
 import type { Message, MessageResponse } from '../types'
 
 let isSignedIn = false

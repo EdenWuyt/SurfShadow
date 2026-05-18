@@ -1,3 +1,4 @@
+// Watches text selection on web pages and mounts or removes the floating Shadow Bar.
 import { isBarEventTarget, removeBar, showBar } from './shadow-bar'
 
 document.addEventListener('mouseup', (event: MouseEvent) => {

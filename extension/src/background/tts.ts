@@ -1,3 +1,4 @@
+// Calls the protected TTS Edge Function and returns audio bytes to the content script.
 import { getSettings } from './settings'
 import { supabaseFetch } from './supabase'
 
