@@ -13,5 +13,5 @@ jobs:
       - name: Trigger Supabase cleanup function
         run: |
           curl -X GET \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SECRET_KEY }}" \
-            https://jfarzdwgmshcucwpoecv.supabase.co/functions/v1/delete-expired-cache-audios
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            https://jfarzdwgmshcucwpoecv.supabase.co/functions/v1/cleanup-audio-cache
