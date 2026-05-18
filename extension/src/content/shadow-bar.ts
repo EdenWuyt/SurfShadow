@@ -31,6 +31,25 @@ interface BarControllerContext {
   view: ShadowBarView
 }
 
+async function syncSnippetSavedState(context: BarControllerContext): Promise<void> {
+  const result = await sendMessage({
+    type: 'CHECK_SNIPPET',
+    text: context.selectedText,
+    language: currentLang.code,
+  })
+
+  if (result && 'saved' in result) {
+    context.state.snippetSaved = result.saved
+    context.view.syncSaveButton(result.saved)
+    return
+  }
+
+  if (result && 'error' in result && result.error === 'auth_required') {
+    context.state.snippetSaved = false
+    context.view.syncSaveButton(false)
+  }
+}
+
 function stopRecording(): void {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop()
@@ -108,7 +127,10 @@ function wireSettings(context: BarControllerContext): void {
   langSelect.value = currentLang.code
   langSelect.addEventListener('change', () => {
     const match = LANGUAGES.find((language) => language.code === langSelect.value)
-    if (match) currentLang = match
+    if (match) {
+      currentLang = match
+      void syncSnippetSavedState(context)
+    }
   })
 
   void chrome.storage.local.get(['accessToken', 'defaultLanguage']).then((localSettings) => {
@@ -133,7 +155,10 @@ function wireSettings(context: BarControllerContext): void {
 
     currentLang = match
     langSelect.value = match.code
+    void syncSnippetSavedState(context)
   })
+
+  void syncSnippetSavedState(context)
 }
 
 function wireAuth(context: BarControllerContext): void {
@@ -301,7 +326,7 @@ function wireSaveToggle(context: BarControllerContext): void {
     }
 
     btnSave.textContent = 'Error'
-    if (result && 'error' in result && result.error === 'Not signed in') {
+    if (result && 'error' in result && result.error === 'auth_required') {
       showStatus('Sign in from the extension popup to save text.')
     }
     setTimeout(() => {

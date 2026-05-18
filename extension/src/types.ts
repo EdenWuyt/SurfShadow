@@ -26,6 +26,7 @@ export type Message =
   | { type: 'REQUEST_TTS_AUDIO'; text: string; language: string; voice: string; speed: number }
   | { type: 'SAVE_SNIPPET'; text: string; language: string }
   | { type: 'DELETE_SNIPPET'; text: string; language: string }
+  | { type: 'CHECK_SNIPPET'; text: string; language: string }
   | { type: 'SIGN_IN' }
   | { type: 'GET_SETTINGS' }
   | { type: 'SAVE_SETTINGS'; defaultLanguage: string }
@@ -34,6 +35,7 @@ export type Message =
 // Every possible response shape the background worker can return.
 export type MessageResponse =
   | { audio: number[] }
+  | { saved: boolean }
   | { success: true; email?: string }
   | { error: string }
   | Settings

@@ -2,6 +2,22 @@ import { SUPABASE_ANON, SUPABASE_URL } from '../config'
 import { ensureProfile } from './profile'
 import { getUserEmail } from './jwt'
 
+export async function validateAccessToken(accessToken: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_ANON,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 export async function refreshAccessToken(
   refreshToken: string,
 ): Promise<{ accessToken: string; refreshToken: string } | { error: string }> {
