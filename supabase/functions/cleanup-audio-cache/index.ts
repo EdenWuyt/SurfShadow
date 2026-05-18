@@ -1,22 +1,11 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { assertSupabaseServerEnv, corsPreflight, getServiceClient, json } from '../_shared/runtime.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
 const tableName = 'audio_cache'
 const bucketName = Deno.env.get('AUDIO_CACHE_BUCKET') ?? 'audio-cache'
 const batchSize = Number.parseInt(Deno.env.get('AUDIO_CACHE_CLEANUP_BATCH_SIZE') ?? '100', 10) || 100
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-}
-
-const supabase = createClient(supabaseUrl, serviceRoleKey)
 
 async function assertConnection() {
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
-  }
+  const supabase = getServiceClient()
 
   const { error } = await supabase
     .from(tableName)
@@ -28,6 +17,7 @@ async function assertConnection() {
 }
 
 async function loadExpiredRows() {
+  const supabase = getServiceClient()
   const now = new Date().toISOString()
   const { data, error } = await supabase
     .from(tableName)
@@ -42,6 +32,7 @@ async function loadExpiredRows() {
 async function deleteStorageObjects(paths: string[]) {
   if (!paths.length) return
 
+  const supabase = getServiceClient()
   const { error } = await supabase.storage.from(bucketName).remove(paths)
   if (error) throw error
 }
@@ -49,6 +40,7 @@ async function deleteStorageObjects(paths: string[]) {
 async function deleteCacheRows(ids: string[]) {
   if (!ids.length) return
 
+  const supabase = getServiceClient()
   const { error } = await supabase
     .from(tableName)
     .delete()
@@ -58,11 +50,11 @@ async function deleteCacheRows(ids: string[]) {
 }
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS })
-  }
+  const preflight = corsPreflight(request)
+  if (preflight) return preflight
 
   try {
+    assertSupabaseServerEnv()
     await assertConnection()
 
     const expiredRows = await loadExpiredRows()
@@ -72,21 +64,15 @@ Deno.serve(async (request) => {
     await deleteStorageObjects(paths)
     await deleteCacheRows(ids)
 
-    return Response.json(
-      {
-        ok: true,
-        connected: true,
-        deleted_rows: ids.length,
-        deleted_objects: paths.length,
-        bucket: bucketName,
-      },
-      { headers: CORS_HEADERS },
-    )
+    return json({
+      ok: true,
+      connected: true,
+      deleted_rows: ids.length,
+      deleted_objects: paths.length,
+      bucket: bucketName,
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Cleanup failed'
-    return Response.json(
-      { ok: false, connected: false, error: message },
-      { status: 500, headers: CORS_HEADERS },
-    )
+    return json({ ok: false, connected: false, error: message }, 500)
   }
 })

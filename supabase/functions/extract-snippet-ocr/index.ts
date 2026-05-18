@@ -1,4 +1,9 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import {
+  assertSupabaseServerEnv,
+  corsPreflight,
+  json,
+  requireUserId,
+} from '../_shared/runtime.ts'
 
 interface AzureReadLine {
   text?: string
@@ -14,29 +19,8 @@ interface AzureOcrResponse {
   }
 }
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const azureVisionEndpoint = Deno.env.get('AZURE_VISION_ENDPOINT') ?? ''
 const azureVisionKey = Deno.env.get('AZURE_VISION_KEY') ?? ''
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-}
-
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...CORS_HEADERS,
-    },
-  })
-}
-
-function getServiceClient() {
-  return createClient(supabaseUrl, serviceRoleKey)
-}
 
 function getAnalyzeUrl(): string {
   const baseUrl = azureVisionEndpoint.endsWith('/') ? azureVisionEndpoint : `${azureVisionEndpoint}/`
@@ -56,29 +40,16 @@ function extractText(payload: AzureOcrResponse): string {
 }
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS })
-  }
+  const preflight = corsPreflight(request)
+  if (preflight) return preflight
 
   try {
-    if (!supabaseUrl || !serviceRoleKey) {
-      return json({ error: 'Supabase is not configured' }, 500)
-    }
+    assertSupabaseServerEnv()
     if (!azureVisionEndpoint || !azureVisionKey) {
       return json({ error: 'Azure Vision is not configured' }, 500)
     }
 
-    const authorization = request.headers.get('Authorization') ?? ''
-    if (!authorization.startsWith('Bearer ')) {
-      return json({ error: 'auth_required' }, 401)
-    }
-
-    const token = authorization.slice('Bearer '.length).trim()
-    const supabase = getServiceClient()
-    const { data: authData, error: authError } = await supabase.auth.getUser(token)
-    if (authError || !authData.user) {
-      return json({ error: 'auth_required' }, 401)
-    }
+    await requireUserId(request)
 
     const formData = await request.formData()
     const image = formData.get('image')

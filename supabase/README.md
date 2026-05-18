@@ -1,11 +1,12 @@
 # Supabase Functions
 
 This folder holds the server-side Supabase Edge Functions used by SurfShadow.
+Shared runtime helpers for JSON responses, CORS, Supabase service clients, and bearer-token verification live in `functions/_shared/runtime.ts`. Shared snippet/tag normalization and hydration helpers live in `functions/_shared/snippet-write.ts`.
 
 ## Functions
 
 - `functions/request-tts-audio`
-  Authenticated Azure AI TTS proxy with shared cache lookup in `audio_cache`.
+  Authenticated Azure AI TTS proxy with server-owned cache lookup and TTL refresh in `audio_cache`.
 - `functions/create-snippet`
   Authenticated snippet creation endpoint with tag normalization and dedupe handling.
 - `functions/update-snippet`
@@ -21,7 +22,7 @@ This folder holds the server-side Supabase Edge Functions used by SurfShadow.
 
 SurfShadow follows the Supabase best practice of **using the client SDK with Row Level Security (RLS) directly whenever possible**. Edge Functions are only introduced when the client cannot securely or efficiently perform an action.
 
-- **Why TTS and OCR use Edge Functions**: These require private API keys (`AZURE_SPEECH_KEY`, `AZURE_VISION_KEY`). Exposing these keys in the frontend code would allow anyone to exploit your Azure billing. The Edge Function acts as a secure, authenticated proxy.
+- **Why TTS and OCR use Edge Functions**: These require private API keys (`AZURE_SPEECH_KEY`, `AZURE_VISION_KEY`). Exposing these keys in client code would allow anyone to exploit your Azure billing. The Edge Function acts as a secure, authenticated proxy and owns cache behavior for TTS.
 - **Why Snippet Writes use Edge Functions**: Creating or updating a snippet with tags is a complex "transaction." It requires inserting a snippet, deduplicating tags, creating new tags, and mapping them in `snippet_tags`. Doing this on the frontend requires 4-5 network round trips, which is slow and risks race conditions.
 - **Why Practice Recordings use the Client SDK directly**: Uploading a recording is a simple two-step process: upload an audio file, then insert a single row into `practice_recordings`. Both the Storage Bucket and Database Table are fully secured by RLS to guarantee users can only write their own data. Migrating this to an Edge Function would introduce a massive **double-upload penalty** (the browser uploads the audio file to the Edge Function, which then buffers and uploads the exact same file to Storage). Direct client uploads are faster and completely secure.
 - **Why Snippet Reads use the Client SDK directly**: Listing snippets, filters, and paginated reads are handled through direct Supabase queries in the browser with RLS. The current web app uses PostgREST range queries for server-side pagination rather than an additional read Edge Function.
@@ -83,6 +84,47 @@ npx.cmd supabase functions deploy delete-snippet --project-ref <your-project-ref
 npx.cmd supabase functions deploy extract-snippet-ocr --project-ref <your-project-ref>
 npx.cmd supabase functions deploy cleanup-audio-cache --project-ref <your-project-ref>
 ```
+
+If you prefer one command, use the included shell script:
+
+```bash
+./supabase/deploy-functions.sh <your-project-ref>
+```
+
+Optional custom env file:
+
+```bash
+./supabase/deploy-functions.sh <your-project-ref> supabase/functions/.env
+```
+
+## Smoke test script
+
+To call each deployed function once, use:
+
+```bash
+./supabase/test-functions.sh https://your-project-ref.supabase.co/functions/v1 <access-token> [image-path]
+```
+
+Arguments:
+
+- `functions-base-url`: your deployed Edge Function base URL ending in `/functions/v1`
+- `access-token`: a valid Supabase user access token
+- `image-path`:
+  optional file path for exercising `extract-snippet-ocr`
+
+What it does:
+
+- creates a snippet
+- updates that snippet
+- requests TTS audio
+- optionally calls OCR if an image path is provided
+- deletes the snippet
+- triggers cleanup-audio-cache
+
+Requirements:
+
+- `curl`
+- `node`
 
 ## Local env
 
@@ -254,7 +296,7 @@ Successful response:
 
 ## Scheduling cleanup
 
-The `cleanup-audio-cache` Edge Function needs to run on a schedule to delete expired audio files and free up Storage space. 
+The `cleanup-audio-cache` Edge Function needs to run on a schedule to delete expired audio files and free up Storage space.
 
 This repository includes a GitHub Actions workflow (`.github/workflows/cleanup.yaml`) that runs automatically every hour to trigger this cleanup.
 

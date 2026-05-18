@@ -1,6 +1,11 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2'
-
-
+import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
+import {
+  assertSupabaseServerEnv,
+  corsPreflight,
+  getServiceClient,
+  json,
+  requireUserId,
+} from '../_shared/runtime.ts'
 interface AudioCacheRow {
   cache_key: string
   storage_path: string
@@ -14,27 +19,10 @@ interface TtsRequest {
   speed: number
 }
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const azureSpeechKey = Deno.env.get('AZURE_SPEECH_KEY') ?? ''
 const azureSpeechRegion = Deno.env.get('AZURE_SPEECH_REGION') ?? ''
 const audioCacheBucket = Deno.env.get('AUDIO_CACHE_BUCKET') ?? 'audio-cache'
 const audioCacheTtlDays = Number.parseInt(Deno.env.get('AUDIO_CACHE_TTL_DAYS') ?? '30', 10) || 30
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-}
-
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...CORS_HEADERS,
-    },
-  })
-}
 
 function getCacheExpiresAt(): string {
   const expiresAt = new Date()
@@ -67,12 +55,7 @@ async function getCacheKey({ text, language, voice, speed }: TtsRequest): Promis
     .join('')
 }
 
-
-function getServiceClient() {
-  return createClient(supabaseUrl, serviceRoleKey)
-}
-
-async function getCacheEntry(service: ReturnType<typeof getServiceClient>, cacheKey: string): Promise<AudioCacheRow | null> {
+async function getCacheEntry(service: SupabaseClient, cacheKey: string): Promise<AudioCacheRow | null> {
   const { data, error } = await service
     .from('audio_cache')
     .select('cache_key, storage_path, expires_at')
@@ -83,14 +66,16 @@ async function getCacheEntry(service: ReturnType<typeof getServiceClient>, cache
   return data
 }
 
-async function refreshCacheExpiry(service: ReturnType<typeof getServiceClient>, cacheKey: string): Promise<void> {
-  await service
+async function refreshCacheExpiry(service: SupabaseClient, cacheKey: string): Promise<void> {
+  const { error } = await service
     .from('audio_cache')
     .update({ expires_at: getCacheExpiresAt() })
     .eq('cache_key', cacheKey)
+
+  if (error) throw error
 }
 
-async function readCachedAudio(service: ReturnType<typeof getServiceClient>, storagePath: string): Promise<Uint8Array | null> {
+async function readCachedAudio(service: SupabaseClient, storagePath: string): Promise<Uint8Array | null> {
   const { data, error } = await service.storage.from(audioCacheBucket).download(storagePath)
   if (error) return null
   return new Uint8Array(await data.arrayBuffer())
@@ -121,7 +106,7 @@ async function requestAzureAudio(ssml: string): Promise<Uint8Array> {
 }
 
 async function upsertCacheEntry(
-  service: ReturnType<typeof getServiceClient>,
+  service: SupabaseClient,
   cacheKey: string,
   audio: Uint8Array,
 ): Promise<void> {
@@ -152,29 +137,17 @@ async function upsertCacheEntry(
 }
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS })
-  }
+  const preflight = corsPreflight(request)
+  if (preflight) return preflight
 
   try {
-    if (!supabaseUrl || !serviceRoleKey) {
-      return json({ error: 'Supabase is not configured' }, 500)
-    }
+    assertSupabaseServerEnv()
     if (!azureSpeechKey || !azureSpeechRegion) {
       return json({ error: 'Azure Speech is not configured' }, 500)
     }
 
-    const authorization = request.headers.get('Authorization') ?? ''
-    if (!authorization.startsWith('Bearer ')) {
-      return json({ error: 'auth_required' }, 401)
-    }
-
-    const token = authorization.slice('Bearer '.length).trim()
+    await requireUserId(request)
     const service = getServiceClient()
-    const { data: authData, error: authError } = await service.auth.getUser(token)
-    if (authError || !authData.user) {
-      return json({ error: 'auth_required' }, 401)
-    }
 
     const body = await request.json() as Partial<TtsRequest>
     if (!body.text || !body.language || !body.voice) {
@@ -194,7 +167,9 @@ Deno.serve(async (request) => {
     if (cacheEntry && !isCacheExpired(cacheEntry.expires_at)) {
       const cached = await readCachedAudio(service, cacheEntry.storage_path)
       if (cached) {
-        void refreshCacheExpiry(service, cacheKey)
+        void refreshCacheExpiry(service, cacheKey).catch(() => {
+          // Cache expiry refresh is best-effort and should not block playback.
+        })
         return json({ audio: Array.from(cached) })
       }
     }
