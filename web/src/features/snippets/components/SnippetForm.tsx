@@ -25,9 +25,18 @@ import {
 import { LANGUAGES } from '@/shared/languages'
 import type { SnippetMutation, Tag } from '@/shared/types'
 import {
-  chipSelectedClass,
   fieldLabelClass,
   helperTextClass,
+  snippetFormActionRowClass,
+  snippetFormLanguageSectionClass,
+  snippetFormMetaCardContentClass,
+  snippetFormOcrActionsClass,
+  snippetFormSelectedTagClass,
+  snippetFormSelectedTagListClass,
+  snippetFormSelectedTagRemoveBadgeClass,
+  snippetFormTagInputRowClass,
+  snippetFormTagSectionClass,
+  snippetFormTextCardContentClass,
 } from '@/styles/recipes'
 
 interface SnippetFormProps {
@@ -144,7 +153,7 @@ export function SnippetForm({
       ) : null}
 
       <Card>
-        <CardContent className="space-y-3 p-4">
+        <CardContent className={snippetFormTextCardContentClass}>
           <label className={fieldLabelClass} htmlFor="snippet-text">
             Snippet text
           </label>
@@ -158,7 +167,7 @@ export function SnippetForm({
             value={value.text}
           />
           {canUseOcr ? (
-            <div className="flex flex-wrap gap-3">
+            <div className={snippetFormOcrActionsClass}>
               <Button
                 disabled={isExtractingOcr}
                 onClick={() => cameraInputRef.current?.click()}
@@ -183,8 +192,8 @@ export function SnippetForm({
       </Card>
 
       <Card>
-        <CardContent className="space-y-4 p-4">
-          <div className="space-y-2.5">
+        <CardContent className={snippetFormMetaCardContentClass}>
+          <div className={snippetFormLanguageSectionClass}>
             <label className={fieldLabelClass} htmlFor="snippet-language">
               Language
             </label>
@@ -202,11 +211,11 @@ export function SnippetForm({
             </Select>
           </div>
 
-          <div className="space-y-3">
+          <div className={snippetFormTagSectionClass}>
             <label className={fieldLabelClass} htmlFor="snippet-tags">
               Tags
             </label>
-            <div className="flex items-center gap-2 mt-2">
+            <div className={snippetFormTagInputRowClass}>
               <Input
                 className="flex-1"
                 id="snippet-tags"
@@ -225,16 +234,16 @@ export function SnippetForm({
               </Button>
             </div>
             {value.tagNames.length ? (
-              <div className="flex flex-wrap gap-2">
+              <div className={snippetFormSelectedTagListClass}>
                 {value.tagNames.map((tagName) => (
                   <button
-                    className={`${chipSelectedClass} relative pr-6`}
+                    className={snippetFormSelectedTagClass}
                     key={tagName}
                     onClick={() => removeTag(tagName)}
                     type="button"
                   >
                     <span>#{tagName}</span>
-                    <span className="absolute right-1 top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--accent-foreground)]/18 text-[10px] font-semibold leading-none text-[color:var(--accent-foreground)]">
+                    <span className={snippetFormSelectedTagRemoveBadgeClass}>
                       x
                     </span>
                   </button>
@@ -259,7 +268,7 @@ export function SnippetForm({
         </CardContent>
       </Card>
 
-      <div className="flex gap-3 pb-2">
+      <div className={snippetFormActionRowClass}>
         {onCancel ? (
           <Button className="flex-1" onClick={onCancel} type="button" variant="ghost">
             Cancel

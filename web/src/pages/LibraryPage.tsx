@@ -7,7 +7,7 @@ import { Notice } from '@/components/ui/notice'
 import { PageMessage } from '@/components/ui/page-message'
 import { Select } from '@/components/ui/select'
 import { getOrderOptions } from '@/features/library/lib/library-search'
-import { compactSelectClass, pageMetaClass } from '@/styles/recipes'
+import { compactSelectClass } from '@/styles/recipes'
 
 export default function LibraryPage(): JSX.Element {
   const {
@@ -38,10 +38,10 @@ export default function LibraryPage(): JSX.Element {
       {deleteError ? <Notice variant="error">{deleteError}</Notice> : null}
 
       <div className="flex items-center justify-between gap-3">
-        <p className={pageMetaClass}>
+        <p className="meta-label">
           {totalCount} snippets in total
         </p>
-        <label className={`flex items-center gap-2 ${pageMetaClass}`}>
+        <label className="meta-label flex items-center gap-2">
           <span>Order</span>
           <Select
             className={compactSelectClass}

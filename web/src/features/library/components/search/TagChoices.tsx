@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import { Button } from '@/components/ui/button'
 import type { Tag } from '@/shared/types'
 import { EditableTagChip } from '@/features/tags/components/EditableTagChip'
+import { filterChoiceGroupClass } from '@/styles/recipes'
 
 interface TagChoicesProps {
   onSelectAll: () => void
@@ -18,7 +19,7 @@ export function TagChoices({ onSelectAll, onToggle, selectedTagIds, tags }: TagC
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={filterChoiceGroupClass}>
       <Button onClick={onSelectAll} size="sm" variant={allSelected ? 'default' : 'secondary'}>
         All
       </Button>

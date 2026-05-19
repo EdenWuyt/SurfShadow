@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react'
 import type { JSX } from 'react'
 import { Input } from '@/components/ui/input'
+import { searchFieldInputClass, searchFieldWrapperClass } from '@/styles/recipes'
 
 interface SearchFieldProps {
   onChange: (value: string) => void
@@ -9,10 +10,10 @@ interface SearchFieldProps {
 
 export function SearchField({ onChange, value }: SearchFieldProps): JSX.Element {
   return (
-    <div className="relative p-1">
+    <div className={searchFieldWrapperClass}>
       <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" />
       <Input
-        className="surface-search h-12 rounded-full !pl-10 pr-4"
+        className={searchFieldInputClass}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search"
         value={value}

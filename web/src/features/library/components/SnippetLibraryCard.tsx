@@ -14,6 +14,8 @@ import { resolveErrorMessage, showError } from '@/stores/feedback-store'
 import {
   destructiveMenuItemClass,
   inlineSelectClass,
+  libraryCardHeaderClass,
+  libraryCardMenuTriggerClass,
   menuItemClass,
   modalPreviewClass,
 } from '@/styles/recipes'
@@ -55,10 +57,10 @@ export function SnippetLibraryCard({
     <Card className="relative overflow-hidden">
       <div className="pointer-events-none absolute -bottom-10 -right-10 size-28 rounded-full bg-[radial-gradient(circle,var(--landing-gradient-radial),transparent_65%)] md:size-40" />
       <CardContent className="space-y-3.5 p-4">
-        <div className="flex items-center justify-between gap-3 text-xs text-[color:var(--muted-foreground)] sm:text-sm">
+        <div className={libraryCardHeaderClass}>
           <span>{getLanguageLabel(snippet.language)}</span>
           <details className="relative">
-            <summary className="flex list-none cursor-pointer items-center rounded-full p-1 text-[color:var(--muted-foreground)] hover:bg-[color:var(--surface-2)]">
+            <summary className={libraryCardMenuTriggerClass}>
               <Ellipsis className="size-4" />
             </summary>
             <div className="surface-menu absolute right-0 top-8 z-10 min-w-32 p-1">

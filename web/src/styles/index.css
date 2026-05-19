@@ -149,14 +149,6 @@
     color: var(--muted-foreground);
   }
 
-  .text-danger {
-    color: var(--danger);
-  }
-
-  .text-success {
-    color: var(--success);
-  }
-
   .meta-label {
     @apply text-xs font-medium text-[color:var(--muted-foreground)] sm:text-sm;
   }
@@ -167,14 +159,6 @@
 
   .page-status-error {
     @apply text-sm text-[color:var(--danger)];
-  }
-
-  .chip-solid {
-    @apply inline-flex items-center rounded-full bg-[color:var(--accent)] px-3 py-1 text-xs font-medium text-[color:var(--accent-foreground)];
-  }
-
-  .chip-muted {
-    @apply inline-flex items-center rounded-full bg-[color:var(--surface-2)] px-3 py-1 text-xs font-medium text-[color:var(--foreground)];
   }
 
   .animate-drift-slow {

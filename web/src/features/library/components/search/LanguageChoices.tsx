@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import { Button } from '@/components/ui/button'
+import { filterChoiceGroupClass } from '@/styles/recipes'
 
 interface LanguageChoice {
   code: string
@@ -26,7 +27,7 @@ export function LanguageChoices({
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={filterChoiceGroupClass}>
       <Button onClick={onSelectAll} size="sm" variant={allSelected ? 'default' : 'secondary'}>
         All
       </Button>

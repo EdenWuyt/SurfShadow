@@ -5,7 +5,7 @@ import { SearchField } from '@/features/library/components/search/SearchField'
 import { TagChoices } from '@/features/library/components/search/TagChoices'
 import { useLibrarySearchDraft } from '@/features/library/hooks/use-library-search-draft'
 import { Button } from '@/components/ui/button'
-import { searchFooterClass } from '@/styles/recipes'
+import { librarySearchBodyClass, librarySearchLayoutClass, searchFooterClass } from '@/styles/recipes'
 
 export default function LibrarySearchPage(): JSX.Element {
   const {
@@ -24,8 +24,8 @@ export default function LibrarySearchPage(): JSX.Element {
   } = useLibrarySearchDraft()
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col pt-2 sm:pt-3">
-      <div className="flex-1 space-y-5 overflow-y-auto pb-24">
+    <section className={librarySearchLayoutClass}>
+      <div className={librarySearchBodyClass}>
         <SearchField onChange={setDraftSearch} value={draftSearch} />
 
         <ExpandableFilterSection title="Languages">
