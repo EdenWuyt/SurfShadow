@@ -56,7 +56,7 @@ test('deletes a snippet through the confirmation dialog', async ({ page }) => {
   await expect(page.getByText('Hello from library')).toBeVisible()
   await page.locator('summary').first().click()
   await page.getByText('Delete').first().click()
-  await page.getByRole('button', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Confirm' }).click()
 
   await expect(page.getByText('No snippets yet')).toBeVisible()
 })

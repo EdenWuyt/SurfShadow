@@ -8,7 +8,7 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { ImagePlus, ScanLine } from 'lucide-react'
-import { EditableTagChip } from '@/components/tags/EditableTagChip'
+import { EditableTagChip } from '@/features/tags/components/EditableTagChip'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'

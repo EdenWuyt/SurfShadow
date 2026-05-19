@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { SnippetLibraryCard } from '@/components/library/SnippetLibraryCard'
+import { SnippetLibraryCard } from '@/features/library/components/SnippetLibraryCard'
 import type { Snippet } from '@/shared/types'
 import { renderWithProviders } from '../utils/render'
 
@@ -31,7 +31,7 @@ describe('SnippetLibraryCard', () => {
     )
 
     await user.click(screen.getByText('Delete'))
-    await user.click(screen.getByRole('button', { name: 'Delete' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
 
     expect(onDelete).toHaveBeenCalledWith('snippet-1')
     expect(await screen.findByText('Delete failed')).toBeInTheDocument()

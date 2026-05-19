@@ -44,7 +44,6 @@ describe('ConfirmDialog', () => {
   it('shows the pending label when the confirm action is in progress', () => {
     renderWithProviders(
       <ConfirmDialog
-        confirmLabel="Delete"
         isPending
         onConfirm={vi.fn()}
         onOpenChange={vi.fn()}
@@ -53,6 +52,6 @@ describe('ConfirmDialog', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Delete...' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Confirming...' })).toBeDisabled()
   })
 })

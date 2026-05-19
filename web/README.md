@@ -40,12 +40,22 @@ The app is organized around feature ownership and shared UI primitives:
 
 - `src/features/auth`
   auth gate, provider, and the landing screen
+- `src/features/library`
+  library page hooks and library-owned cards, pagination, and search controls
+- `src/features/practice`
+  practice session orchestration and practice-owned panels
 - `src/features/snippets`
-  snippet form and snippet-specific composition
+  snippet form, snippet CRUD orchestration, and OCR entry points
+- `src/features/tags`
+  shared tag-editing behavior reused across library, snippets, and practice
+- `src/lib`
+  only shared app wiring, shared config, and pure cross-feature helpers; feature-specific helper logic lives under its feature
 - `src/components/feedback`
   shared app-level banners and loading states
 - `src/components/ui`
   reusable primitives such as buttons, cards, dialogs, confirmation dialogs, notices, inputs, selects, and page messages
+- `src/components`
+  only app-wide shared shell/navigation/feedback infrastructure; feature-owned UI should not live here
 - `src/styles`
   global design tokens in `index.css` and reusable Tailwind recipe strings in `recipes.ts`
 

@@ -10,10 +10,12 @@ export const LANGUAGES: Language[] = [
   { code: 'de-DE', label: 'German', voice: 'de-DE-KatjaNeural', voiceCasual: 'de-DE-AmalaNeural' },
 ]
 
+// Get the display name for a language code
 export function getLanguageLabel(code: string): string {
   return LANGUAGES.find((language) => language.code === code)?.label ?? code
 }
 
+// Get the TTS voice for the given language and tone
 export function getVoiceForTone(languageCode: string, tone: 'neutral' | 'casual'): string {
   const match = LANGUAGES.find((language) => language.code === languageCode)
   if (!match) return LANGUAGES[0].voice

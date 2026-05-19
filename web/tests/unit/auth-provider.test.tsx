@@ -31,7 +31,7 @@ vi.mock('@/lib/supabase', () => ({
   },
 }))
 
-vi.mock('@/services/profile-service', () => ({
+vi.mock('@/features/auth/use-cases/ensure-current-profile', () => ({
   ensureCurrentProfile: ensureCurrentProfileMock,
 }))
 

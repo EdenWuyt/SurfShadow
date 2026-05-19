@@ -39,7 +39,8 @@ export function ConfirmDialog({
   open,
   title,
 }: ConfirmDialogProps) {
-  const resolvedPendingLabel = pendingLabel ?? `${confirmLabel}...`
+  // The generic dialog defaults to "Confirm" / "Confirming...", while specific flows can override both labels.
+  const resolvedPendingLabel = pendingLabel ?? 'Confirming...'
 
   return (
     <Dialog onOpenChange={(nextOpen) => !isPending && onOpenChange(nextOpen)} open={open}>

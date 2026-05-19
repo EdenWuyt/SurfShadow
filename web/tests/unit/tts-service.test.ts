@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { TTS_MAX_TEXT_LENGTH } from '@/lib/config'
-import { requestTtsAudio } from '@/services/tts-service'
+import { requestTtsAudio } from '@/features/audio/api/tts-api'
 
 const invokeMock = vi.hoisted(() => vi.fn())
 

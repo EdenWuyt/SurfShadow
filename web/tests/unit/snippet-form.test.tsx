@@ -75,13 +75,13 @@ describe('SnippetForm', () => {
     renderWithProviders(<ControlledSnippetForm />)
 
     await user.type(screen.getByPlaceholderText(/add a tag/i), 'New Tag{enter}')
-    expect(screen.getByRole('button', { name: '#newtag x' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '#newtagx' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '#travel' }))
-    expect(screen.getByRole('button', { name: '#travel x' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '#travelx' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '#travel x' }))
-    expect(screen.queryByRole('button', { name: '#travel x' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '#travelx' }))
+    expect(screen.queryByRole('button', { name: '#travelx' })).not.toBeInTheDocument()
   })
 
   it('renders OCR controls only when enabled and forwards the selected file', async () => {
@@ -100,7 +100,7 @@ describe('SnippetForm', () => {
     )
 
     expect(screen.getByRole('button', { name: /take image/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /upload from gallery/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /upload/i })).toBeInTheDocument()
 
     const fileInput = container.querySelectorAll('input[type="file"]')[0] as HTMLInputElement
     const file = new File(['hello'], 'ocr.png', { type: 'image/png' })

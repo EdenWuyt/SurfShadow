@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { OCR_MAX_IMAGE_BYTES } from '@/lib/config'
-import { extractSnippetText, validateOcrImage } from '@/services/ocr-service'
+import { extractSnippetText, validateOcrImage } from '@/features/snippets/api/ocr-api'
 
 const getSessionMock = vi.hoisted(() => vi.fn())
 

@@ -25,12 +25,19 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-vi.mock('@/services/snippet-service', () => ({
-  deleteTag: vi.fn(),
-  listSnippetLanguages: listSnippetLanguagesMock,
-  listTags: listTagsMock,
-  updateTag: vi.fn(),
-}))
+vi.mock('@/features/snippets/repositories/snippet-repository', async () => {
+  const actual = await vi.importActual<typeof import('@/features/snippets/repositories/snippet-repository')>(
+    '@/features/snippets/repositories/snippet-repository',
+  )
+  return { ...actual, listSavedSnippetLanguages: listSnippetLanguagesMock }
+})
+
+vi.mock('@/features/tags/repositories/tag-repository', async () => {
+  const actual = await vi.importActual<typeof import('@/features/tags/repositories/tag-repository')>(
+    '@/features/tags/repositories/tag-repository',
+  )
+  return { ...actual, listSavedTags: listTagsMock }
+})
 
 function renderSearchPage(route = '/library/search?search=old') {
   const queryClient = createTestQueryClient()

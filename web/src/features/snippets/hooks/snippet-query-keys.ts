@@ -1,0 +1,23 @@
+import type { SnippetFilters } from '@/shared/types'
+
+function normalizeFilters(filters: SnippetFilters = {}, page = 1, pageSize = 8) {
+  return {
+    search: filters.search?.trim() || '',
+    languages: [...(filters.languages ?? [])].sort(),
+    tagIds: [...(filters.tagIds ?? [])].sort(),
+    order: filters.order ?? 'newest',
+    page,
+    pageSize,
+  }
+}
+
+/**
+ * Normalizes caller input so equivalent snippet queries share one React Query cache entry.
+ */
+export const snippetQueryKeys = {
+  all: ['snippets'] as const,
+  list: (filters: SnippetFilters = {}, page = 1, pageSize = 8) =>
+    ['snippets', 'list', normalizeFilters(filters, page, pageSize)] as const,
+  detail: (snippetId: string) => ['snippets', 'detail', snippetId] as const,
+  tags: ['snippets', 'tags'] as const,
+}

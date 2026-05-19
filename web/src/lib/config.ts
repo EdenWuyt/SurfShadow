@@ -1,3 +1,6 @@
+/**
+ * Fails fast for required public env vars so the app does not boot with a broken backend configuration.
+ */
 function requireEnv(name: keyof ImportMetaEnv): string {
   const value = import.meta.env[name]
   if (!value) throw new Error(`Missing environment variable: ${name}`)
