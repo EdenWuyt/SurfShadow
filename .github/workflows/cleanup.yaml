@@ -5,13 +5,21 @@ on:
     - cron: "0 * * * *"   # runs every hour
   workflow_dispatch:       # allows manual run
 
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup-audio-cache
+  cancel-in-progress: true
+
 jobs:
   cleanup:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Trigger Supabase cleanup function
         run: |
-          curl -X GET \
+          curl --fail-with-body --silent --show-error -X GET \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             https://jfarzdwgmshcucwpoecv.supabase.co/functions/v1/cleanup-audio-cache
