@@ -1,2 +1,8 @@
 .agents/
 node_modules/
+web/dist/
+web/.tsbuild/
+web/android/.gradle/
+web/android/.idea/
+web/android/local.properties
+web/android/**/build/

@@ -90,12 +90,34 @@ npm run dev
 npm run dev:host
 npm run typecheck
 npm run build
+npm run build:mobile
 npm run build:debug
 npm run build:analyze
+npm run cap:copy
+npm run cap:sync
+npm run cap:open:android
 npm run test
 npm run test:watch
 npm run test:e2e
 ```
+
+## Capacitor Android wrapper
+
+The Android wrapper lives in `android/` and packages the local `dist/` output into a native shell.
+
+Typical test flow:
+
+```bash
+npm run build:mobile
+npm run cap:open:android
+```
+
+Notes:
+
+- the APK bundles the built frontend locally, so a separate frontend deployment is not required
+- the app still depends on your deployed Supabase project, Edge Functions, Storage, and auth setup
+- microphone-based practice recording depends on Android runtime permission prompts inside the WebView shell
+- Android Studio and an Android SDK/device are required to build and install the APK
 
 ## Testing
 

@@ -7,8 +7,12 @@
     "dev": "vite",
     "dev:host": "vite --host",
     "build": "tsc -b && vite build",
+    "build:mobile": "npm run build && npx cap sync android",
     "build:debug": "tsc -b && vite build --mode debug",
     "build:analyze": "tsc -b && vite build --mode analyze",
+    "cap:copy": "npx cap copy android",
+    "cap:sync": "npx cap sync android",
+    "cap:open:android": "npx cap open android",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -18,6 +22,9 @@
     "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@supabase/supabase-js": "^2.49.8",

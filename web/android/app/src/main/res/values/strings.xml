@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SurfShadow</string>
+    <string name="title_activity_main">SurfShadow</string>
+    <string name="package_name">com.surfshadow.app</string>
+    <string name="custom_url_scheme">com.surfshadow.app</string>
+</resources>
