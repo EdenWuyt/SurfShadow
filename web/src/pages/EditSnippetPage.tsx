@@ -1,18 +1,20 @@
 import { useEffect, useState, type JSX } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
-import { SnippetForm } from '@/components/SnippetForm'
+import { Notice } from '@/components/ui/notice'
+import { PageMessage } from '@/components/ui/page-message'
+import { SnippetForm } from '@/features/snippets/components/SnippetForm'
 import type { SnippetMutation } from '@/shared/types'
 import { snippetQueryKeys } from '@/services/snippet-query'
 import { getSnippet, listTags, updateSnippet } from '@/services/snippet-service'
-import { reportError, reportSuccess } from '@/stores/error-store'
+import { showError, showSuccess } from '@/stores/feedback-store'
 
 export default function EditSnippetPage(): JSX.Element {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { snippetId = '' } = useParams()
   const [draft, setDraft] = useState<SnippetMutation | null>(null)
-  const [status, setStatus] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const snippetQuery = useQuery({
     queryKey: snippetQueryKeys.detail(snippetId),
@@ -24,6 +26,7 @@ export default function EditSnippetPage(): JSX.Element {
     queryFn: listTags,
   })
 
+  // The edit form only seeds once from the fetched snippet so local edits are not blown away by a refetch.
   useEffect(() => {
     if (!snippetQuery.data || draft) return
     setDraft({
@@ -41,36 +44,38 @@ export default function EditSnippetPage(): JSX.Element {
         queryClient.invalidateQueries({ queryKey: snippetQueryKeys.detail(snippetId) }),
         queryClient.invalidateQueries({ queryKey: snippetQueryKeys.tags }),
       ])
-      reportSuccess('Snippet updated.')
+      showSuccess('Snippet updated.')
       navigate('/')
     },
     onError: (reason: unknown) => {
-      setStatus(reportError(reason, 'Unable to update snippet'))
+      setSaveError(showError(reason, 'Unable to update snippet'))
     },
   })
 
   async function handleSubmit(): Promise<void> {
     if (!draft) return
-    setStatus('Saving changes...')
+    setSaveError(null)
     try {
       await updateMutation.mutateAsync(draft)
-    } catch {}
+    } catch {
+      // Mutation-level error handling already sets the local save error.
+    }
   }
 
   if (snippetQuery.isLoading || tagsQuery.isLoading) {
-    return <p className="text-sm text-[color:var(--muted-foreground)]">Loading snippet...</p>
+    return <PageMessage>Loading snippet...</PageMessage>
   }
 
   const queryError = snippetQuery.error ?? tagsQuery.error
   if (queryError) {
     return (
-      <p className="text-sm text-[color:var(--danger)]">
+      <PageMessage variant="error">
         {queryError instanceof Error ? queryError.message : 'Failed to load snippet'}
-      </p>
+      </PageMessage>
     )
   }
 
-  if (!draft) return <p className="text-sm text-[color:var(--danger)]">Snippet not found.</p>
+  if (!draft) return <PageMessage variant="error">Snippet not found.</PageMessage>
 
   return (
     <section className="grid gap-4">
@@ -84,11 +89,7 @@ export default function EditSnippetPage(): JSX.Element {
         value={draft}
       />
 
-      {status ? (
-        <div className="rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 text-sm text-[color:var(--foreground)]">
-          {status}
-        </div>
-      ) : null}
+      {saveError ? <Notice variant="error">{saveError}</Notice> : null}
     </section>
   )
 }

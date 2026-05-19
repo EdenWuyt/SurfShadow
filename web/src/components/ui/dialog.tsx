@@ -17,7 +17,7 @@ function DialogOverlay({
 }: ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>) {
   return (
     <DialogPrimitive.Overlay
-      className={cn('fixed inset-0 z-40 bg-[rgba(16,37,66,0.32)] backdrop-blur-sm', className)}
+      className={cn('fixed inset-0 z-40 bg-[color:var(--overlay)] backdrop-blur-sm', className)}
       {...props}
     />
   )
@@ -33,7 +33,7 @@ export function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          'fixed left-1/2 top-1/2 z-50 w-[calc(100vw-1rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)] p-4 shadow-[0_24px_60px_rgba(16,37,66,0.18)] outline-none',
+          'surface-dialog fixed left-1/2 top-1/2 z-50 w-[calc(100vw-1rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 p-4',
           className,
         )}
         {...props}

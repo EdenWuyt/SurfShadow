@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from 'react'
-import { MarketingLanding } from '@/components/auth/MarketingLanding'
-import { PageLoader } from '@/components/PageLoader'
+import { PageLoader } from '@/components/feedback/PageLoader'
+import { MarketingLanding } from '@/features/auth/components/MarketingLanding'
 import { useAuth } from './AuthProvider'
 
 interface AuthGateProps {

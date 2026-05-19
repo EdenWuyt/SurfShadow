@@ -22,7 +22,7 @@ export function LanguageChoices({
   const allSelected = selectedCodes.length === languages.length
 
   if (!languages.length) {
-    return <p className="text-sm text-[color:var(--muted-foreground)]">No snippet languages yet.</p>
+    return <p className="page-status">No snippet languages yet.</p>
   }
 
   return (

@@ -15,7 +15,7 @@ function SheetOverlay({ className, ...props }: ComponentPropsWithoutRef<typeof D
   return (
     <Dialog.Overlay
       className={cn(
-        'fixed inset-0 z-40 bg-[rgba(16,37,66,0.28)] backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out',
+        'fixed inset-0 z-40 bg-[color:var(--overlay)] backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out',
         className,
       )}
       {...props}
@@ -33,7 +33,7 @@ export function SheetContent({
       <SheetOverlay />
       <Dialog.Content
         className={cn(
-          'fixed inset-y-4 left-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm flex-col rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 shadow-[0_28px_70px_rgba(16,37,66,0.18)] outline-none sm:left-6',
+          'surface-sheet fixed inset-y-4 left-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm flex-col p-5 sm:left-6',
           className,
         )}
         {...props}

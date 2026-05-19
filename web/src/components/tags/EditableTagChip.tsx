@@ -2,19 +2,16 @@ import { useRef, useState, type PointerEventHandler } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { JSX } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Notice } from '@/components/ui/notice'
 import { sanitizeTagName } from '@/lib/sanitize'
 import type { Tag } from '@/shared/types'
 import { snippetQueryKeys } from '@/services/snippet-query'
 import { deleteTag, updateTag } from '@/services/snippet-service'
-import { reportError, reportSuccess } from '@/stores/error-store'
+import { showError, showSuccess } from '@/stores/feedback-store'
+import { chipSelectedClass, chipUnselectedClass } from '@/styles/recipes'
 
 interface EditableTagChipProps {
   interactive?: boolean
@@ -37,8 +34,10 @@ export function EditableTagChip({
   const [open, setOpen] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [draftName, setDraftName] = useState(tag.name)
-  const [status, setStatus] = useState<string | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // Tag edits can affect both the library list and the saved tag list, so both query families need refreshing.
   const invalidateSnippetData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: snippetQueryKeys.all }),
@@ -50,11 +49,11 @@ export function EditableTagChip({
     mutationFn: (name: string) => updateTag(tag.id, name),
     onSuccess: async () => {
       await invalidateSnippetData()
-      setStatus(reportSuccess('Tag updated.'))
+      showSuccess('Tag updated.')
       setOpen(false)
     },
     onError: (reason: unknown) => {
-      setStatus(reason instanceof Error ? reason.message : 'Unable to update tag')
+      setEditError(reason instanceof Error ? reason.message : 'Unable to update tag')
     },
   })
 
@@ -62,11 +61,12 @@ export function EditableTagChip({
     mutationFn: () => deleteTag(tag.id),
     onSuccess: async () => {
       await invalidateSnippetData()
-      setStatus(reportSuccess('Tag deleted.'))
+      showSuccess('Tag deleted.')
+      setConfirmDeleteOpen(false)
       setOpen(false)
     },
     onError: (reason: unknown) => {
-      setStatus(reason instanceof Error ? reason.message : 'Unable to delete tag')
+      setDeleteError(reason instanceof Error ? reason.message : 'Unable to delete tag')
     },
   })
 
@@ -81,10 +81,12 @@ export function EditableTagChip({
     if (!interactive) return
     suppressClickRef.current = false
     clearLongPress()
+    // Long press keeps single-tap available for selection while still exposing edit controls on touch devices.
     longPressTimerRef.current = window.setTimeout(() => {
       suppressClickRef.current = true
       setDraftName(tag.name)
-      setStatus(null)
+      setEditError(null)
+      setDeleteError(null)
       setOpen(true)
     }, LONG_PRESS_MS)
   }
@@ -108,34 +110,30 @@ export function EditableTagChip({
   async function handleSave(): Promise<void> {
     const nextName = sanitizeTagName(draftName)
     if (!nextName) {
-      setStatus('Tag name cannot be empty.')
+      setEditError('Tag name cannot be empty.')
       return
     }
-    setStatus('Saving tag...')
     try {
+      setEditError(null)
       await updateMutation.mutateAsync(nextName)
     } catch (reason) {
-      setStatus(reportError(reason, 'Unable to update tag'))
+      setEditError(showError(reason, 'Unable to update tag'))
     }
   }
 
   async function handleDeleteAction(): Promise<void> {
-    setStatus('Deleting tag...')
-    try {
-      await deleteMutation.mutateAsync()
-    } catch (reason) {
-      setStatus(reportError(reason, 'Unable to delete tag'))
-    }
+    setDeleteError(null)
+    await deleteMutation.mutateAsync().catch((reason) => {
+      const message = showError(reason, 'Unable to delete tag')
+      setDeleteError(message)
+      throw reason
+    })
   }
 
   return (
     <>
       <button
-        className={
-          selected
-            ? 'inline-flex items-center rounded-full bg-[color:var(--accent)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--accent-foreground)] sm:px-3 sm:text-xs'
-            : 'inline-flex items-center rounded-full bg-[color:var(--surface-2)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--foreground)] sm:px-3 sm:text-xs'
-        }
+        className={selected ? chipSelectedClass : chipUnselectedClass}
         onClick={handleClick}
         onPointerCancel={handlePointerLeave}
         onPointerDown={handlePointerDown}
@@ -146,8 +144,17 @@ export function EditableTagChip({
         #{tag.name}
       </button>
 
-      <Dialog onOpenChange={setOpen} open={open}>
-        <DialogContent>
+      <Dialog
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setEditError(null)
+            setDeleteError(null)
+          }
+          setOpen(nextOpen)
+        }}
+        open={open}
+      >
+        {!confirmDeleteOpen ? <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit tag</DialogTitle>
           </DialogHeader>
@@ -168,51 +175,46 @@ export function EditableTagChip({
                 onClick={() => void handleSave()}
                 size="sm"
               >
-                Save
+                {updateMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
               <Button
                 className="whitespace-nowrap"
                 disabled={deleteMutation.isPending}
-                onClick={() => setConfirmDeleteOpen(true)}
+                onClick={() => {
+                  setDeleteError(null)
+                  setConfirmDeleteOpen(true)
+                }}
                 size="sm"
                 variant="destructive"
               >
                 Delete
               </Button>
             </div>
-            {status ? <p className="text-sm text-[color:var(--muted-foreground)]">{status}</p> : null}
+            {editError ? <Notice variant="error">{editError}</Notice> : null}
           </div>
-        </DialogContent>
+        </DialogContent> : null}
       </Dialog>
 
-      <Dialog onOpenChange={setConfirmDeleteOpen} open={confirmDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete tag?</DialogTitle>
-            <DialogDescription>
-              This will remove the tag from your library.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="mt-4 flex items-center justify-end gap-2">
-            <Button onClick={() => setConfirmDeleteOpen(false)} size="sm" variant="ghost">
-              Cancel
-            </Button>
-            <Button
-              className="whitespace-nowrap"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                void handleDeleteAction()
-                setConfirmDeleteOpen(false)
-              }}
-              size="sm"
-              variant="destructive"
-            >
-              Delete
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        confirmLabel="Delete"
+        description="This will remove the tag from your library."
+        errorMessage={deleteError}
+        isPending={deleteMutation.isPending}
+        onConfirm={handleDeleteAction}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !deleteMutation.isPending) {
+            setDeleteError(null)
+          }
+          setConfirmDeleteOpen(nextOpen)
+        }}
+        open={confirmDeleteOpen}
+        pendingLabel="Deleting..."
+        title="Delete tag?"
+      >
+        <div className="surface-preview px-3 py-2">
+          <p className="text-sm font-medium text-[color:var(--foreground)]">#{tag.name}</p>
+        </div>
+      </ConfirmDialog>
     </>
   )
 }

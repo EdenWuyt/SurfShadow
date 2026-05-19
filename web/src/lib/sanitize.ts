@@ -1,7 +1,9 @@
 import type { SnippetFilters, SnippetMutation, SnippetSortOrder } from '@/shared/types'
 
+// eslint-disable-next-line no-control-regex -- this sanitizer intentionally strips non-printable control characters.
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
 const MULTI_SPACE = /[ \t]+/g
+const MULTI_WHITESPACE = /\s+/g
 const MULTI_BLANK_LINES = /\n{3,}/g
 
 function stripControlChars(value: string): string {
@@ -9,7 +11,7 @@ function stripControlChars(value: string): string {
 }
 
 export function sanitizeInlineText(value: string): string {
-  return stripControlChars(value).replace(MULTI_SPACE, ' ').trim()
+  return stripControlChars(value).replace(MULTI_WHITESPACE, ' ').trim()
 }
 
 export function sanitizeMultilineText(value: string): string {

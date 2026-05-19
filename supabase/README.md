@@ -38,7 +38,7 @@ Set these in Supabase Edge Functions:
 - optional: `AUDIO_CACHE_BUCKET=audio-cache`
 - optional: `AUDIO_CACHE_TTL_DAYS=30`
 - optional: `AUDIO_CACHE_CLEANUP_BATCH_SIZE=100`
-- required for normal browser callers: `SUPABASE_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://your-app.example.com`
+- required for normal browser callers: `ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://your-app.example.com`
 - optional: `OCR_MAX_IMAGE_BYTES=5242880`
 - optional: `OCR_ALLOWED_IMAGE_TYPES=image/jpeg,image/png,image/webp,image/heic,image/heif`
 - optional: `TTS_MAX_TEXT_LENGTH=4000`
@@ -144,7 +144,7 @@ AZURE_VISION_KEY=your_azure_vision_key_here
 AUDIO_CACHE_BUCKET=audio-cache
 AUDIO_CACHE_TTL_DAYS=30
 AUDIO_CACHE_CLEANUP_BATCH_SIZE=100
-SUPABASE_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://your-app.example.com
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://your-app.example.com
 OCR_MAX_IMAGE_BYTES=5242880
 OCR_ALLOWED_IMAGE_TYPES=image/jpeg,image/png,image/webp,image/heic,image/heif
 TTS_MAX_TEXT_LENGTH=4000
@@ -189,7 +189,7 @@ Successful response:
 ```
 
 This function requires a valid Supabase bearer token in `Authorization`.
-Normal browser callers also require their `Origin` to be listed in `SUPABASE_ALLOWED_ORIGINS`. Extension origins such as `chrome-extension://...` are allowed automatically.
+Normal browser callers also require their `Origin` to be listed in `ALLOWED_ORIGINS`. Extension origins such as `chrome-extension://...` are allowed automatically.
 
 ### `create-snippet`
 
@@ -283,7 +283,7 @@ Send `multipart/form-data` with an `image` file field.
 Validation rules:
 
 - `Authorization` must contain a valid Supabase bearer token
-- the browser `Origin` must be listed in `SUPABASE_ALLOWED_ORIGINS` unless the caller is a browser extension origin such as `chrome-extension://...`
+- the browser `Origin` must be listed in `ALLOWED_ORIGINS` unless the caller is a browser extension origin such as `chrome-extension://...`
 - the image MIME type must be in `OCR_ALLOWED_IMAGE_TYPES`
 - the image size must not exceed `OCR_MAX_IMAGE_BYTES`
 
@@ -297,7 +297,7 @@ Successful response:
 ```
 
 This function requires a valid Supabase bearer token in `Authorization`.
-Normal browser callers also require their `Origin` to be listed in `SUPABASE_ALLOWED_ORIGINS`. Extension origins such as `chrome-extension://...` are allowed automatically.
+Normal browser callers also require their `Origin` to be listed in `ALLOWED_ORIGINS`. Extension origins such as `chrome-extension://...` are allowed automatically.
 
 ### `cleanup-audio-cache`
 

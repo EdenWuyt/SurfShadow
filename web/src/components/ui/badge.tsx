@@ -9,7 +9,7 @@ const badgeVariants = cva(
       variant: {
         default: 'bg-[color:var(--surface-2)] text-[color:var(--foreground)]',
         accent: 'bg-[color:var(--accent-soft)] text-[color:var(--accent-strong)]',
-        muted: 'bg-[rgba(16,37,66,0.08)] text-[color:var(--muted-foreground)]',
+        muted: 'bg-[color:var(--surface-2)] text-[color:var(--muted-foreground)]',
       },
     },
     defaultVariants: {

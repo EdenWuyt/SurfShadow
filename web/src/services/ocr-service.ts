@@ -1,8 +1,24 @@
-import { OCR_FUNCTION_NAME, SUPABASE_URL } from '@/lib/config'
+import {
+  OCR_ALLOWED_IMAGE_TYPES,
+  OCR_FUNCTION_NAME,
+  OCR_MAX_IMAGE_BYTES,
+  SUPABASE_URL,
+} from '@/lib/config'
 import { supabase } from '@/lib/supabase'
 import type { OcrResponse } from '@/shared/types'
 
+export function validateOcrImage(imageFile: File): void {
+  if (!OCR_ALLOWED_IMAGE_TYPES.includes(imageFile.type as (typeof OCR_ALLOWED_IMAGE_TYPES)[number])) {
+    throw new Error('Unsupported image type')
+  }
+  if (imageFile.size > OCR_MAX_IMAGE_BYTES) {
+    throw new Error(`Image exceeds ${OCR_MAX_IMAGE_BYTES} bytes`)
+  }
+}
+
 export async function extractSnippetText(imageFile: File): Promise<OcrResponse> {
+  validateOcrImage(imageFile)
+
   const {
     data: { session },
   } = await supabase.auth.getSession()

@@ -14,7 +14,7 @@ export function TagChoices({ onSelectAll, onToggle, selectedTagIds, tags }: TagC
   const allSelected = selectedTagIds.length === tags.length
 
   if (!tags.length) {
-    return <p className="text-sm text-[color:var(--muted-foreground)]">No tags yet.</p>
+    return <p className="page-status">No tags yet.</p>
   }
 
   return (

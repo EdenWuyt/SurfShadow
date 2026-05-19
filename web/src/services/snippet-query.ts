@@ -1,5 +1,6 @@
 import type { SnippetFilters } from '@/shared/types'
 
+// Query keys normalize caller input so equivalent filter objects reuse the same cache entry.
 function normalizeFilters(filters: SnippetFilters = {}, page = 1, pageSize = 8) {
   return {
     search: filters.search?.trim() || '',

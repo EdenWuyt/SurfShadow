@@ -14,6 +14,7 @@ import {
 import { sanitizeInlineText } from '@/lib/sanitize'
 import { snippetQueryKeys } from '@/services/snippet-query'
 import { listSnippetLanguages, listTags } from '@/services/snippet-service'
+import { searchFooterClass } from '@/styles/recipes'
 
 export default function LibrarySearchPage(): JSX.Element {
   const navigate = useNavigate()
@@ -23,6 +24,7 @@ export default function LibrarySearchPage(): JSX.Element {
   const [draftLanguages, setDraftLanguages] = useState<string[]>(filters.languages ?? [])
   const [draftTagIds, setDraftTagIds] = useState<string[]>(filters.tagIds ?? [])
 
+  // Search page keeps a draft copy of the URL filters so the bottom actions can cancel or commit the whole form.
   useEffect(() => {
     setDraftSearch(filters.search ?? '')
     setDraftLanguages(filters.languages ?? [])
@@ -99,7 +101,7 @@ export default function LibrarySearchPage(): JSX.Element {
         </ExpandableFilterSection>
       </div>
 
-      <div className="mt-auto border-t border-[color:var(--border)] bg-[color:var(--bg)] py-3">
+      <div className={searchFooterClass}>
         <div className="grid grid-cols-2 gap-2">
           <Button
             className="w-full"

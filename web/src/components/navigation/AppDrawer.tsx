@@ -1,6 +1,7 @@
 import { LogOut, Plus, Rows3, Search } from 'lucide-react'
 import type { JSX } from 'react'
 import { Link } from 'react-router-dom'
+import { newSnippetRoutePrefetchProps, searchRoutePrefetchProps } from '@/app/route-prefetch'
 import { Button } from '@/components/ui/button'
 import {
   SheetClose,
@@ -31,19 +32,19 @@ export function AppDrawer({ onSignOut }: AppDrawerProps): JSX.Element {
           </Link>
         </SheetClose>
         <SheetClose asChild>
-          <Link className={drawerLinkClassName} to="/snippets/new">
+          <Link className={drawerLinkClassName} to="/snippets/new" {...newSnippetRoutePrefetchProps}>
             <Plus className="size-4" />
             Add new snippet
           </Link>
         </SheetClose>
         <SheetClose asChild>
-          <Link className={drawerLinkClassName} to="/library/search">
+          <Link className={drawerLinkClassName} to="/library/search" {...searchRoutePrefetchProps}>
             <Search className="size-4" />
             Search and filter
           </Link>
         </SheetClose>
         <SheetClose asChild>
-          <Button className={cn(drawerLinkClassName, "justify-start py-6")} onClick={() => void onSignOut()} variant="secondary">
+          <Button className={cn(drawerLinkClassName, 'justify-start py-6')} onClick={() => void onSignOut()} variant="secondary">
             <LogOut className="size-4" />
             Sign out
           </Button>

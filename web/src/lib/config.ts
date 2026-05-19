@@ -17,3 +17,7 @@ export const DELETE_SNIPPET_FUNCTION_NAME =
   import.meta.env.VITE_DELETE_SNIPPET_FUNCTION_NAME || 'delete-snippet'
 export const PRACTICE_RECORDINGS_BUCKET =
   import.meta.env.VITE_PRACTICE_RECORDINGS_BUCKET || 'practice-recordings'
+export const OCR_ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'] as const
+export const OCR_MAX_IMAGE_BYTES = 5 * 1024 * 1024
+export const OCR_ACCEPT_ATTRIBUTE = OCR_ALLOWED_IMAGE_TYPES.join(',')
+export const TTS_MAX_TEXT_LENGTH = 4000

@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-const allowedOrigins = (Deno.env.get('SUPABASE_ALLOWED_ORIGINS') ?? '')
+const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)

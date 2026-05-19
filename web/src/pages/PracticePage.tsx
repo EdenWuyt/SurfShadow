@@ -5,6 +5,7 @@ import { AttemptPanel } from '@/components/practice/AttemptPanel'
 import { PracticeSnippetCard } from '@/components/practice/PracticeSnippetCard'
 import { SavedAttemptsPanel } from '@/components/practice/SavedAttemptsPanel'
 import { SourcePlaybackPanel } from '@/components/practice/SourcePlaybackPanel'
+import { PageMessage } from '@/components/ui/page-message'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { getVoiceForTone } from '@/shared/languages'
 import type { PlaybackMode, PracticeRecording } from '@/shared/types'
@@ -17,7 +18,7 @@ import {
   savePracticeRecording,
 } from '@/services/practice-recording-service'
 import { requestTtsAudio } from '@/services/tts-service'
-import { reportError, reportSuccess } from '@/stores/error-store'
+import { showError, showSuccess } from '@/stores/feedback-store'
 
 function playBlob(blob: Blob): Promise<void> {
   const url = URL.createObjectURL(blob)
@@ -66,6 +67,7 @@ export default function PracticePage(): JSX.Element {
     let mounted = true
     setLoadingRecordings(true)
 
+    // Saved attempts are loaded outside the main snippet query because they come from Storage-backed practice data.
     void listPracticeRecordings(snippetId)
       .then((nextRecordings) => {
         if (!mounted) return
@@ -73,7 +75,7 @@ export default function PracticePage(): JSX.Element {
       })
       .catch((reason: unknown) => {
         if (!mounted) return
-        reportError(reason, 'Failed to load practice session')
+        showError(reason, 'Failed to load practice session')
       })
       .finally(() => {
         if (!mounted) return
@@ -122,6 +124,7 @@ export default function PracticePage(): JSX.Element {
     setActiveSavedRecordingId(null)
   }
 
+  // Source playback can switch between browser speech and server TTS, so the token guards stale callbacks.
   async function handlePlaySource(): Promise<void> {
     if (!snippet) return
     if (isSourcePlaying) {
@@ -148,7 +151,7 @@ export default function PracticePage(): JSX.Element {
         utterance.onerror = () => {
           if (playbackTokenRef.current === token) {
             setIsSourcePlaying(false)
-            reportError(new Error('Unable to play source audio'), 'Unable to play source audio')
+            showError(new Error('Unable to play source audio'), 'Unable to play source audio')
           }
         }
         speechSynthesis.speak(utterance)
@@ -178,12 +181,13 @@ export default function PracticePage(): JSX.Element {
       }
     } catch (reason) {
       setIsSourcePlaying(false)
-      reportError(reason, 'Unable to play source audio')
+      showError(reason, 'Unable to play source audio')
     }
   }
 
   async function startRecording(): Promise<void> {
     try {
+      // Draft recordings stay local until the user explicitly saves them as a practice attempt.
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       setMicAllowed(true)
       streamRef.current = stream
@@ -209,7 +213,7 @@ export default function PracticePage(): JSX.Element {
       setIsRecording(true)
     } catch (reason) {
       setMicAllowed(false)
-      reportError(reason, 'Microphone permission is blocked. You can still listen and review saved attempts.')
+      showError(reason, 'Microphone permission is blocked. You can still listen and review saved attempts.')
     }
   }
 
@@ -224,9 +228,9 @@ export default function PracticePage(): JSX.Element {
       const saved = await savePracticeRecording(user.id, snippet.id, draftRecording)
       setRecordings((current) => [saved, ...current])
       setDraftRecording(null)
-      reportSuccess('Practice attempt saved.')
+      showSuccess('Practice attempt saved.')
     } catch (reason) {
-      reportError(reason, 'Unable to save recording')
+      showError(reason, 'Unable to save recording')
     }
   }
 
@@ -259,11 +263,12 @@ export default function PracticePage(): JSX.Element {
         void audio.play().catch(reject)
       })
     } catch (reason) {
-      reportError(reason, 'Unable to play draft recording')
+      showError(reason, 'Unable to play draft recording')
     }
   }
 
   async function playSavedRecording(recording: PracticeRecording): Promise<void> {
+    // Saved attempt playback owns its own audio element so source and draft playback can be stopped independently.
     stopSourcePlayback()
     stopDraftPlayback()
     stopSavedPlayback()
@@ -298,13 +303,14 @@ export default function PracticePage(): JSX.Element {
     try {
       await playSavedRecording(recording)
     } catch (reason) {
-      reportError(reason, 'Unable to play saved attempt')
+      showError(reason, 'Unable to play saved attempt')
     }
   }
 
   async function handleCompareLatest(): Promise<void> {
     if (!snippet || !recordings.length) return
     try {
+      // Compare reuses the same source voice settings, then immediately plays the newest saved attempt for side-by-side review.
       const source = await requestTtsAudio({
         text: snippet.text,
         language: snippet.language,
@@ -314,7 +320,7 @@ export default function PracticePage(): JSX.Element {
       await playBytes(source)
       await playSavedRecording(recordings[0])
     } catch (reason) {
-      reportError(reason, 'Unable to compare recordings')
+      showError(reason, 'Unable to compare recordings')
     }
   }
 
@@ -326,9 +332,9 @@ export default function PracticePage(): JSX.Element {
       if (activeSavedRecordingId === recording.id) stopSavedPlayback()
       await deletePracticeRecording(recording)
       setRecordings((current) => current.filter((item) => item.id !== recording.id))
-      reportSuccess('Saved attempt deleted.')
+      showSuccess('Saved attempt deleted.')
     } catch (reason) {
-      const message = reportError(reason, 'Unable to delete saved attempt')
+      const message = showError(reason, 'Unable to delete saved attempt')
       setDeleteError(message)
       throw new Error(message)
     } finally {
@@ -337,18 +343,18 @@ export default function PracticePage(): JSX.Element {
   }
 
   if (loadingRecordings || snippetQuery.isLoading) {
-    return <p className="text-sm text-[color:var(--muted-foreground)]">Loading practice session...</p>
+    return <PageMessage>Loading practice session...</PageMessage>
   }
 
   if (snippetQuery.error) {
     return (
-      <p className="text-sm text-[color:var(--danger)]">
+      <PageMessage variant="error">
         {snippetQuery.error instanceof Error ? snippetQuery.error.message : 'Failed to load practice session'}
-      </p>
+      </PageMessage>
     )
   }
 
-  if (!snippet) return <p className="text-sm text-[color:var(--danger)]">Snippet not found.</p>
+  if (!snippet) return <PageMessage variant="error">Snippet not found.</PageMessage>
 
   return (
     <section className="grid gap-4">

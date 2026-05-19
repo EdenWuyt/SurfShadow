@@ -8,10 +8,13 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { ImagePlus, ScanLine } from 'lucide-react'
+import { EditableTagChip } from '@/components/tags/EditableTagChip'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { OCR_ACCEPT_ATTRIBUTE } from '@/lib/config'
 import {
   sanitizeInlineText,
   sanitizeLanguageCode,
@@ -21,6 +24,11 @@ import {
 } from '@/lib/sanitize'
 import { LANGUAGES } from '@/shared/languages'
 import type { SnippetMutation, Tag } from '@/shared/types'
+import {
+  chipSelectedClass,
+  fieldLabelClass,
+  helperTextClass,
+} from '@/styles/recipes'
 
 interface SnippetFormProps {
   availableTags: Tag[]
@@ -57,6 +65,7 @@ export function SnippetForm({
     [availableTags],
   )
 
+  // Keeping draft updates centralized avoids each field reimplementing object merge logic.
   function updateDraft(nextPatch: Partial<SnippetMutation>): void {
     onChange({
       ...value,
@@ -64,6 +73,7 @@ export function SnippetForm({
     })
   }
 
+  // Tag creation and toggle both route through the same sanitizer so UI and server shape stay aligned.
   function addTag(rawTagName: string): void {
     const nextTagNames = sanitizeTagNames([...value.tagNames, rawTagName])
     updateDraft({ tagNames: nextTagNames })
@@ -91,6 +101,7 @@ export function SnippetForm({
     if (sanitizeTagName(tagDraft)) addTag(tagDraft)
   }
 
+  // OCR uses hidden inputs so the main form layout stays stable while still supporting camera capture.
   async function handleImageChange(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -109,7 +120,7 @@ export function SnippetForm({
       {canUseOcr ? (
         <>
           <input
-            accept="image/*"
+            accept={OCR_ACCEPT_ATTRIBUTE}
             className="sr-only"
             id={uploadInputId}
             onChange={(event) => {
@@ -119,7 +130,7 @@ export function SnippetForm({
             type="file"
           />
           <input
-            accept="image/*"
+            accept={OCR_ACCEPT_ATTRIBUTE}
             capture="environment"
             className="sr-only"
             id={cameraInputId}
@@ -134,11 +145,12 @@ export function SnippetForm({
 
       <Card>
         <CardContent className="space-y-3 p-4">
-          <label className="text-sm font-medium text-[color:var(--muted-foreground)]" htmlFor="snippet-text">
+          <label className={fieldLabelClass} htmlFor="snippet-text">
             Snippet text
           </label>
           <Textarea
             id="snippet-text"
+            className='mt-2'
             onChange={(event) => updateDraft({ text: sanitizeMultilineText(event.target.value) })}
             placeholder="Paste or type the line you want to shadow."
             required
@@ -149,21 +161,21 @@ export function SnippetForm({
             <div className="flex flex-wrap gap-3">
               <Button
                 disabled={isExtractingOcr}
-                onClick={() => uploadInputRef.current?.click()}
+                onClick={() => cameraInputRef.current?.click()}
                 type="button"
-                variant="secondary"
+                variant="outline"
               >
                 <ScanLine className="mr-2 size-4" />
                 {isExtractingOcr ? 'Reading image' : 'Take image'}
               </Button>
               <Button
                 disabled={isExtractingOcr}
-                onClick={() => cameraInputRef.current?.click()}
+                onClick={() => uploadInputRef.current?.click()}
                 type="button"
                 variant="outline"
               >
                 <ImagePlus className="mr-2 size-4" />
-                Upload from gallery
+                Upload
               </Button>
             </div>
           ) : null}
@@ -173,11 +185,11 @@ export function SnippetForm({
       <Card>
         <CardContent className="space-y-4 p-4">
           <div className="space-y-2.5">
-            <label className="text-sm font-medium text-[color:var(--muted-foreground)]" htmlFor="snippet-language">
+            <label className={fieldLabelClass} htmlFor="snippet-language">
               Language
             </label>
-            <select
-              className="flex h-12 w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3 text-sm text-[color:var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]"
+            <Select
+              className="h-12 w-full rounded-2xl px-4 mt-2"
               id="snippet-language"
               onChange={(event) => updateDraft({ language: sanitizeLanguageCode(event.target.value) })}
               value={value.language}
@@ -187,14 +199,14 @@ export function SnippetForm({
                   {language.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="space-y-3">
-            <label className="text-sm font-medium text-[color:var(--muted-foreground)]" htmlFor="snippet-tags">
+            <label className={fieldLabelClass} htmlFor="snippet-tags">
               Tags
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mt-2">
               <Input
                 className="flex-1"
                 id="snippet-tags"
@@ -215,33 +227,32 @@ export function SnippetForm({
             {value.tagNames.length ? (
               <div className="flex flex-wrap gap-2">
                 {value.tagNames.map((tagName) => (
-                  <Button
-                    className="rounded-full"
+                  <button
+                    className={`${chipSelectedClass} relative pr-6`}
                     key={tagName}
                     onClick={() => removeTag(tagName)}
-                    size="sm"
                     type="button"
-                    variant="secondary"
                   >
-                    #{tagName} x
-                  </Button>
+                    <span>#{tagName}</span>
+                    <span className="absolute right-1 top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--accent-foreground)]/18 text-[10px] font-semibold leading-none text-[color:var(--accent-foreground)]">
+                      x
+                    </span>
+                  </button>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-[color:var(--muted-foreground)]">No tags yet.</p>
+              <p className={helperTextClass}>No tags yet.</p>
             )}
-            <p className="text-sm font-medium text-[color:var(--muted-foreground)]">Saved tags</p>
+            <p className={fieldLabelClass}>Saved tags</p>
             <div className="flex flex-wrap gap-2">
               {tagOptions.map((tag) => (
-                <Button
+                <EditableTagChip
+                  interactive
                   key={tag.id}
                   onClick={() => toggleTag(tag.name)}
-                  size="sm"
-                  type="button"
-                  variant={value.tagNames.includes(tag.name) ? 'default' : 'secondary'}
-                >
-                  #{tag.name}
-                </Button>
+                  selected={value.tagNames.includes(tag.name)}
+                  tag={tag}
+                />
               ))}
             </div>
           </div>
@@ -261,3 +272,4 @@ export function SnippetForm({
     </form>
   )
 }
+

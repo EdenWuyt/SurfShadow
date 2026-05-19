@@ -7,6 +7,9 @@ Mobile-first practice app for SurfShadow. This app is designed to work with the 
 - Vite
 - React
 - TypeScript
+- Tailwind CSS v4
+- CVA / clsx / tailwind-merge
+- Radix primitives
 - Supabase Auth / Database / Storage
 
 ## Current scope
@@ -31,6 +34,29 @@ Mobile-first practice app for SurfShadow. This app is designed to work with the 
 - Snippet create, update, and delete go through Edge Functions so tag normalization and write rules stay server-side.
 - OCR and Azure TTS also go through Edge Functions because they require private provider credentials.
 
+## Frontend structure
+
+The app is organized around feature ownership and shared UI primitives:
+
+- `src/features/auth`
+  auth gate, provider, and the landing screen
+- `src/features/snippets`
+  snippet form and snippet-specific composition
+- `src/components/feedback`
+  shared app-level banners and loading states
+- `src/components/ui`
+  reusable primitives such as buttons, cards, dialogs, confirmation dialogs, notices, inputs, selects, and page messages
+- `src/styles`
+  global design tokens in `index.css` and reusable Tailwind recipe strings in `recipes.ts`
+
+Styling is intentionally token-driven:
+
+- no feature component should introduce hardcoded color literals
+- theme colors, overlays, shadows, and brand colors live in shared CSS variables
+- repeated Tailwind surface/field patterns are centralized as shared utilities or recipe exports
+- destructive flows share one `ConfirmDialog` wrapper so delete behavior stays consistent across features
+- common lazy-route entry points expose preload helpers so next-page navigation can warm route chunks on hover, focus, or touch
+
 ## Setup
 
 1. Copy `.env.example` to `.env`.
@@ -46,6 +72,39 @@ npm install
 ```bash
 npm run dev
 ```
+
+Useful scripts:
+
+```bash
+npm run dev
+npm run dev:host
+npm run typecheck
+npm run build
+npm run build:debug
+npm run build:analyze
+npm run test
+npm run test:watch
+npm run test:e2e
+```
+
+## Testing
+
+The web app has two test layers:
+
+- `npm run test`
+  runs the Vitest unit/component suite in `tests/unit`
+- `npm run test:e2e`
+  runs the Playwright browser suite in `tests/e2e`
+
+The Playwright suite starts the app in `test` mode and mocks Supabase/Auth/OCR responses so it can exercise:
+
+- auth gating
+- library search flow
+- OCR-assisted snippet creation
+- edit route hydration
+- delete confirmation flow
+
+Repo-level security automation is defined in `.github/workflows/security.yml` and runs dependency review, CodeQL, workflow linting, and npm audit checks in GitHub Actions.
 
 ## Required Supabase additions
 
@@ -81,6 +140,11 @@ The OCR flow assumes a Supabase Edge Function named by `VITE_OCR_FUNCTION_NAME` 
   "detectedLanguage": null
 }
 ```
+
+The web client also applies matching OCR guardrails before upload:
+
+- allowed image types: `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif`
+- max image size: `5 MiB`
 
 Snippet writes are expected to go through:
 

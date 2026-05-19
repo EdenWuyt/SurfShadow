@@ -3,13 +3,8 @@ import { useState, type JSX } from 'react'
 import type { PracticeRecording } from '@/shared/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { PageMessage } from '@/components/ui/page-message'
 
 interface SavedAttemptsPanelProps {
   activeRecordingId: string | null
@@ -32,6 +27,7 @@ export function SavedAttemptsPanel({
 }: SavedAttemptsPanelProps): JSX.Element {
   const [confirmRecording, setConfirmRecording] = useState<PracticeRecording | null>(null)
 
+  // The panel owns dialog close timing so failed deletes can keep the user in context with the inline error.
   async function handleConfirmDelete(): Promise<void> {
     if (!confirmRecording) return
     await onDeleteSaved(confirmRecording)
@@ -58,7 +54,7 @@ export function SavedAttemptsPanel({
 
                 return (
                   <div
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-[color:var(--border)] bg-white/50 px-4 py-3"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-4 py-3"
                     key={recording.id}
                   >
                     <div>
@@ -94,37 +90,24 @@ export function SavedAttemptsPanel({
         </CardContent>
       </Card>
 
-      <Dialog onOpenChange={(open) => !open && !deletingRecordingId && setConfirmRecording(null)} open={Boolean(confirmRecording)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete saved attempt?</DialogTitle>
-            <DialogDescription>This removes the saved recording from your practice history.</DialogDescription>
-          </DialogHeader>
-          {confirmRecording ? (
-            <div className="rounded-[18px] border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-2 text-sm text-[color:var(--foreground)]">
+      <ConfirmDialog
+        confirmLabel="Delete"
+        description="This removes the saved recording from your practice history."
+        errorMessage={deleteError}
+        isPending={Boolean(deletingRecordingId)}
+        onConfirm={handleConfirmDelete}
+        onOpenChange={(open) => !open && !deletingRecordingId && setConfirmRecording(null)}
+        open={Boolean(confirmRecording)}
+        title="Delete saved attempt?"
+      >
+        {confirmRecording ? (
+          <div className="surface-preview px-3 py-2">
+            <PageMessage className="text-[color:var(--foreground)]">
               Attempt from {new Date(confirmRecording.created_at).toLocaleString()}
-            </div>
-          ) : null}
-          {deleteError ? (
-            <div className="rounded-[18px] border border-[color:var(--danger)]/20 bg-[color:var(--surface-2)] px-3 py-2 text-sm text-[color:var(--danger)]">
-              {deleteError}
-            </div>
-          ) : null}
-          <div className="flex gap-3 pt-2">
-            <Button
-              className="flex-1"
-              disabled={Boolean(deletingRecordingId)}
-              onClick={() => setConfirmRecording(null)}
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            <Button className="flex-1" disabled={Boolean(deletingRecordingId)} onClick={() => void handleConfirmDelete()}>
-              {deletingRecordingId ? 'Deleting...' : 'Delete'}
-            </Button>
+            </PageMessage>
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : null}
+      </ConfirmDialog>
     </>
   )
 }

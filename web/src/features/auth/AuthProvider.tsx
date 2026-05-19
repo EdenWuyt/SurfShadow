@@ -3,7 +3,7 @@ import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { ensureCurrentProfile } from '@/services/profile-service'
 import type { Profile } from '@/shared/types'
-import { reportError } from '@/stores/error-store'
+import { showError } from '@/stores/feedback-store'
 
 interface AuthContextValue {
   loading: boolean
@@ -28,6 +28,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   useEffect(() => {
     let mounted = true
 
+    // Initial session bootstrap handles the persisted-tab case before any auth event fires.
     void supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return
       setSession(data.session)
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
         })
     })
 
+    // Auth state changes re-run profile hydration so first sign-in and refresh-token restores share one path.
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!mounted) return
       setSession(nextSession)
@@ -89,7 +91,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
         },
       })
     } catch (reason) {
-      reportError(reason, 'Unable to start Google sign-in')
+      showError(reason, 'Unable to start Google sign-in')
     }
   }
 
@@ -97,7 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     try {
       await supabase.auth.signOut()
     } catch (reason) {
-      reportError(reason, 'Unable to sign out')
+      showError(reason, 'Unable to sign out')
     }
   }
 

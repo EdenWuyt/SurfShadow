@@ -8,6 +8,7 @@ function resolveDefaultLanguage(language?: string): string {
 }
 
 export async function ensureCurrentProfile(): Promise<Profile | null> {
+  // Profile bootstrap is "read or create" so both web and extension can assume a row exists after sign-in.
   const {
     data: { user },
     error: userError,

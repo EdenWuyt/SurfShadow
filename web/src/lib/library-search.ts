@@ -1,6 +1,7 @@
 import type { SnippetFilters, SnippetSortOrder } from '@/shared/types'
 import { sanitizeInlineText, sanitizeLanguageCode, sanitizeSnippetSortOrder } from '@/lib/sanitize'
 
+// Library filters are URL-backed so the main list and the search screen can share one canonical query contract.
 export function getLibraryFiltersFromSearchParams(searchParams: URLSearchParams): SnippetFilters {
   return {
     search: sanitizeInlineText(searchParams.get('q') ?? ''),
@@ -23,6 +24,7 @@ export function updateLibrarySearchParams(
   const tagIds = Array.from(new Set((next.tagIds ?? []).map((value) => value.trim()).filter(Boolean))).sort()
   const page = next.page ?? 1
 
+  // Full-selection collapses back to the unfiltered URL so "all selected" behaves the same as no filter.
   if (search) params.set('q', search)
   else params.delete('q')
 

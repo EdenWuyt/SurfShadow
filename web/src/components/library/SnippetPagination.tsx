@@ -70,7 +70,7 @@ export function SnippetPagination({ onPageChange, page }: SnippetPaginationProps
           {getVisiblePages(page.page, page.totalPages).map((token, index) =>
             token === 'ellipsis' ? (
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center text-sm text-[color:var(--muted-foreground)]"
+                className="text-muted flex h-8 w-8 shrink-0 items-center justify-center text-sm"
                 key={`ellipsis-${index}`}
               >
                 ...

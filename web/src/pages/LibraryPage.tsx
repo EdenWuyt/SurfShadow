@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SnippetLibraryCard } from '@/components/library/SnippetLibraryCard'
 import { SnippetPagination } from '@/components/library/SnippetPagination'
 import { Card, CardContent } from '@/components/ui/card'
+import { Notice } from '@/components/ui/notice'
+import { PageMessage } from '@/components/ui/page-message'
+import { Select } from '@/components/ui/select'
 import { useSearchParams } from 'react-router-dom'
 import {
   getLibraryFiltersFromSearchParams,
@@ -16,7 +19,8 @@ import type { PlaybackMode, Snippet } from '@/shared/types'
 import { snippetQueryKeys } from '@/services/snippet-query'
 import { deleteSnippet, listSnippets } from '@/services/snippet-service'
 import { requestTtsAudio } from '@/services/tts-service'
-import { reportError, reportSuccess } from '@/stores/error-store'
+import { showError, showSuccess } from '@/stores/feedback-store'
+import { compactSelectClass, pageMetaClass } from '@/styles/recipes'
 
 const PAGE_SIZE = 8
 
@@ -54,10 +58,10 @@ export default function LibraryPage(): JSX.Element {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: snippetQueryKeys.all }),
       ])
-      reportSuccess('Snippet deleted.')
+      showSuccess('Snippet deleted.')
     },
     onError: (reason: unknown) => {
-      setError(reportError(reason, 'Failed to delete snippet'))
+      setError(showError(reason, 'Failed to delete snippet'))
     },
   })
 
@@ -66,7 +70,7 @@ export default function LibraryPage(): JSX.Element {
     try {
       await deleteMutation.mutateAsync(snippetId)
     } catch (reason) {
-      throw new Error(reportError(reason, 'Failed to delete snippet'))
+      throw new Error(showError(reason, 'Failed to delete snippet'))
     }
   }
 
@@ -93,6 +97,7 @@ export default function LibraryPage(): JSX.Element {
     setActivePlayback(null)
   }
 
+  // The playback flow needs one owner token so a new request can safely cancel a stale TTS or speech callback.
   async function handlePlay(snippet: Snippet, mode: PlaybackMode): Promise<void> {
     if (activePlayback?.snippetId === snippet.id && activePlayback.mode === mode) {
       stopPlayback()
@@ -137,7 +142,7 @@ export default function LibraryPage(): JSX.Element {
         if (audioRef.current === player) audioRef.current = null
         if (playbackTokenRef.current === token) {
           setActivePlayback(null)
-          setError(reportError(new Error('Unable to play snippet audio'), 'Unable to play snippet audio'))
+          setError(showError(new Error('Unable to play snippet audio'), 'Unable to play snippet audio'))
         }
       }
       player.onended = () => {
@@ -146,7 +151,7 @@ export default function LibraryPage(): JSX.Element {
         if (playbackTokenRef.current === token) setActivePlayback(null)
       }
     } catch (reason) {
-      setError(reportError(reason, 'Unable to play snippet audio'))
+      setError(showError(reason, 'Unable to play snippet audio'))
       setActivePlayback(null)
     } finally {
       if (playbackTokenRef.current !== token) {
@@ -178,22 +183,22 @@ export default function LibraryPage(): JSX.Element {
 
   return (
     <section className="grid gap-4">
-      {loading ? <p className="text-sm text-[color:var(--muted-foreground)]">Loading snippets...</p> : null}
+      {loading ? <PageMessage>Loading snippets...</PageMessage> : null}
       {queryError ? (
-        <p className="text-sm text-[color:var(--danger)]">
+        <PageMessage variant="error">
           {queryError instanceof Error ? queryError.message : 'Failed to load snippets'}
-        </p>
+        </PageMessage>
       ) : null}
-      {error ? <p className="text-sm text-[color:var(--danger)]">{error}</p> : null}
+      {error ? <Notice variant="error">{error}</Notice> : null}
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-[color:var(--muted-foreground)] sm:text-sm">
+        <p className={pageMetaClass}>
           {totalCount} snippets in total
         </p>
-        <label className="flex items-center gap-2 text-xs text-[color:var(--muted-foreground)] sm:text-sm">
+        <label className={`flex items-center gap-2 ${pageMetaClass}`}>
           <span>Order</span>
-          <select
-            className="h-9 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-strong)] px-3 text-xs text-[color:var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)] sm:text-sm"
+          <Select
+            className={compactSelectClass}
             onChange={(event) => setOrderInUrl(event.target.value)}
             value={urlFilters.order ?? 'newest'}
           >
@@ -202,7 +207,7 @@ export default function LibraryPage(): JSX.Element {
                 {option.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
 
@@ -223,9 +228,9 @@ export default function LibraryPage(): JSX.Element {
         <Card>
           <CardContent className="space-y-3 p-6">
             <h3 className="font-serif text-2xl text-[color:var(--foreground)]">No snippets yet</h3>
-            <p className="text-sm text-[color:var(--muted-foreground)]">
+            <PageMessage>
               Start with a new snippet or import text from an image to build your practice library.
-            </p>
+            </PageMessage>
           </CardContent>
         </Card>
       ) : null}

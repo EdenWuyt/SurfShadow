@@ -1,19 +1,27 @@
 import { Suspense, lazy, type JSX } from 'react'
 import { createBrowserRouter, Outlet } from 'react-router-dom'
+import {
+  loadEditSnippetPage,
+  loadLibraryPage,
+  loadLibrarySearchPage,
+  loadNewSnippetPage,
+  loadPracticePage,
+} from '@/app/route-loaders'
 import { AppShell } from '@/components/AppShell'
-import { PageLoader } from '@/components/PageLoader'
+import { PageLoader } from '@/components/feedback/PageLoader'
 import { AuthGate } from '@/features/auth/AuthGate'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 
-const LibraryPage = lazy(() => import('@/pages/LibraryPage'))
-const LibrarySearchPage = lazy(() => import('@/pages/LibrarySearchPage'))
-const NewSnippetPage = lazy(() => import('@/pages/NewSnippetPage'))
-const EditSnippetPage = lazy(() => import('@/pages/EditSnippetPage'))
-const PracticePage = lazy(() => import('@/pages/PracticePage'))
+const LibraryPage = lazy(loadLibraryPage)
+const LibrarySearchPage = lazy(loadLibrarySearchPage)
+const NewSnippetPage = lazy(loadNewSnippetPage)
+const EditSnippetPage = lazy(loadEditSnippetPage)
+const PracticePage = lazy(loadPracticePage)
 
 function Root(): JSX.Element {
   return (
     <AuthProvider>
+      {/* AuthGate owns the pre-login landing split so route pages can assume an authenticated shell. */}
       <AuthGate>
         <AppShell>
           <Suspense fallback={<PageLoader />}>

@@ -75,6 +75,7 @@ async function listTagsByIds(tagIds: string[]): Promise<Tag[]> {
 }
 
 function attachTags(snippets: SnippetRow[], snippetTags: SnippetTagRow[], tags: Tag[]): Snippet[] {
+  // Snippet rows come back separately from tag joins, so the client rebuilds the nested shape expected by the UI.
   const tagsById = new Map(tags.map((tag) => [tag.id, tag]))
   const tagIdsBySnippetId = new Map<string, string[]>()
 
@@ -96,6 +97,7 @@ function attachTags(snippets: SnippetRow[], snippetTags: SnippetTagRow[], tags: 
 async function resolveSnippetIdsForTagFilter(tagIds: string[]): Promise<string[]> {
   if (!tagIds.length) return []
 
+  // Tag filtering is resolved through snippet_tags first so the final snippet query can keep pagination server-side.
   const { data, error } = await supabase
     .from('snippet_tags')
     .select('snippet_id, tag_id')
@@ -255,6 +257,7 @@ export async function getSnippet(snippetId: string): Promise<Snippet | null> {
 }
 
 export async function createSnippet(input: SnippetMutation): Promise<Snippet> {
+  // Writes stay behind Edge Functions so tag normalization and ownership rules remain server-enforced.
   const { snippet } = await invokeSnippetMutation(
     CREATE_SNIPPET_FUNCTION_NAME,
     sanitizeSnippetMutation(input),

@@ -18,6 +18,7 @@ export async function savePracticeRecording(
   snippetId: string,
   blob: Blob,
 ): Promise<PracticeRecording> {
+  // Recordings are persisted in Storage first, then registered in practice_recordings so the DB only points at real files.
   const extension = blob.type.includes('mpeg') ? 'mp3' : 'webm'
   const path = `${userId}/${snippetId}/${Date.now()}.${extension}`
 
@@ -56,6 +57,7 @@ export async function getPracticeRecordingUrl(storagePath: string): Promise<stri
 }
 
 export async function deletePracticeRecording(recording: PracticeRecording): Promise<void> {
+  // Storage is deleted first so we do not leave orphaned files behind if the DB row removal succeeds alone.
   const { error: storageError } = await supabase.storage
     .from(PRACTICE_RECORDINGS_BUCKET)
     .remove([recording.storage_path])

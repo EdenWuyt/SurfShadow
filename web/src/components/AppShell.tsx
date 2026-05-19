@@ -1,12 +1,13 @@
-import { Plus } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 import { useEffect, useState, type JSX, type ReactNode } from 'react'
-import { GlobalErrorBanner } from '@/components/GlobalErrorBanner'
-import { GlobalSuccessBanner } from '@/components/GlobalSuccessBanner'
+import { newSnippetRoutePrefetchProps } from '@/app/route-prefetch'
+import { AppBanner } from '@/components/feedback/AppBanner'
 import { Link, useLocation } from 'react-router-dom'
 import { AppHeader } from '@/components/navigation/AppHeader'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { useErrorStore } from '@/stores/error-store'
+import { useFeedbackStore } from '@/stores/feedback-store'
+import { appContentClass, appShellClass, floatingActionButtonClass } from '@/styles/recipes'
 
 interface AppShellProps {
   children: ReactNode
@@ -15,11 +16,11 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps): JSX.Element {
   const location = useLocation()
   const { signOut } = useAuth()
-  const clearError = useErrorStore((state) => state.clearError)
-  const clearSuccess = useErrorStore((state) => state.clearSuccess)
-  const errorMessage = useErrorStore((state) => state.message)
+  const clearError = useFeedbackStore((state) => state.clearErrorMessage)
+  const clearSuccess = useFeedbackStore((state) => state.clearSuccessMessage)
+  const errorMessage = useFeedbackStore((state) => state.errorMessage)
   const [showFab, setShowFab] = useState(true)
-  const successMessage = useErrorStore((state) => state.successMessage)
+  const successMessage = useFeedbackStore((state) => state.successMessage)
   const isPracticeRoute = location.pathname.startsWith('/practice')
   const isCreateRoute = location.pathname === '/snippets/new'
   const isEditRoute = location.pathname.startsWith('/snippets/') && location.pathname.endsWith('/edit')
@@ -58,11 +59,13 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
     return () => window.removeEventListener('scroll', onScroll)
   }, [isCreateRoute, isSearchRoute, location.pathname])
 
+  // Route changes reset transient banners so status from one flow does not leak into the next screen.
   useEffect(() => {
     clearError()
     clearSuccess()
   }, [clearError, clearSuccess, location.pathname])
 
+  // Error and success banners auto-dismiss unless the user moves to another route first.
   useEffect(() => {
     if (!errorMessage) return
 
@@ -84,24 +87,22 @@ export function AppShell({ children }: AppShellProps): JSX.Element {
   }, [clearSuccess, successMessage])
 
   return (
-    <div
-      className={`flex min-h-dvh flex-col bg-[color:var(--bg)] px-3 pt-0 text-[color:var(--foreground)] sm:px-4 md:px-6 ${shellPaddingBottomClass}`}
-    >
+    <div className={`${appShellClass} ${shellPaddingBottomClass}`}>
       <AppHeader onSignOut={signOut} pageTitle={pageTitle} />
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col min-h-0">
-        <GlobalSuccessBanner />
-        <GlobalErrorBanner />
+      <main className={appContentClass}>
+        <AppBanner icon={CheckCircle2} message={successMessage} onDismiss={clearSuccess} variant="success" />
+        <AppBanner icon={AlertCircle} message={errorMessage} onDismiss={clearError} variant="error" />
         {children}
       </main>
       {isLibraryRoute ? (
         <Button
           asChild
-          className={`fixed bottom-3 right-3 z-30 h-12 w-12 shadow-[0_20px_38px_rgba(157,61,34,0.28)] transition-all duration-200 sm:bottom-4 sm:right-4 sm:h-14 sm:w-14 ${
+          className={`${floatingActionButtonClass} ${
             showFab ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'
           }`}
           size="icon"
         >
-          <Link aria-label="Create new snippet" to="/snippets/new">
+          <Link aria-label="Create new snippet" to="/snippets/new" {...newSnippetRoutePrefetchProps}>
             <Plus className="size-5" />
           </Link>
         </Button>

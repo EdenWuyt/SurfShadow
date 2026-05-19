@@ -4,10 +4,18 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "nodemon --watch src -e ts,tsx --exec \"vite\"",
+    "dev": "vite",
+    "dev:host": "vite --host",
     "build": "tsc -b && vite build",
+    "build:debug": "tsc -b && vite build --mode debug",
+    "build:analyze": "tsc -b && vite build --mode analyze",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -26,11 +34,18 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
+    "jsdom": "^29.1.1",
+    "rollup-plugin-visualizer": "^7.0.1",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
-    "vite-plugin-pwa": "^0.21.1"
+    "vite-plugin-pwa": "^0.21.1",
+    "vitest": "^4.1.6"
   }
 }
