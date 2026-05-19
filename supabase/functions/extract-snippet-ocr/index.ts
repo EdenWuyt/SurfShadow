@@ -1,6 +1,8 @@
 import {
+  assertAllowedOrigin,
   assertSupabaseServerEnv,
   corsPreflight,
+  getCaughtErrorStatus,
   json,
   requireUserId,
 } from '../_shared/runtime.ts'
@@ -21,6 +23,13 @@ interface AzureOcrResponse {
 
 const azureVisionEndpoint = Deno.env.get('AZURE_VISION_ENDPOINT') ?? ''
 const azureVisionKey = Deno.env.get('AZURE_VISION_KEY') ?? ''
+const maxImageBytes = Number.parseInt(Deno.env.get('OCR_MAX_IMAGE_BYTES') ?? '5242880', 10) || 5242880
+const allowedImageTypes = new Set(
+  (Deno.env.get('OCR_ALLOWED_IMAGE_TYPES') ?? 'image/jpeg,image/png,image/webp,image/heic,image/heif')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
+)
 
 function getAnalyzeUrl(): string {
   const baseUrl = azureVisionEndpoint.endsWith('/') ? azureVisionEndpoint : `${azureVisionEndpoint}/`
@@ -44,9 +53,10 @@ Deno.serve(async (request) => {
   if (preflight) return preflight
 
   try {
+    assertAllowedOrigin(request)
     assertSupabaseServerEnv()
     if (!azureVisionEndpoint || !azureVisionKey) {
-      return json({ error: 'Azure Vision is not configured' }, 500)
+      return json(request, { error: 'Azure Vision is not configured' }, 500)
     }
 
     await requireUserId(request)
@@ -54,7 +64,13 @@ Deno.serve(async (request) => {
     const formData = await request.formData()
     const image = formData.get('image')
     if (!(image instanceof File)) {
-      return json({ error: 'Missing image upload' }, 400)
+      return json(request, { error: 'Missing image upload' }, 400)
+    }
+    if (!allowedImageTypes.has(image.type)) {
+      return json(request, { error: 'Unsupported image type' }, 400)
+    }
+    if (image.size > maxImageBytes) {
+      return json(request, { error: `Image exceeds ${maxImageBytes} bytes` }, 400)
     }
 
     const imageBytes = await image.arrayBuffer()
@@ -68,21 +84,21 @@ Deno.serve(async (request) => {
     })
 
     if (!azureResponse.ok) {
-      return json({ error: `Azure Vision error ${azureResponse.status}` }, 502)
+      return json(request, { error: `Azure Vision error ${azureResponse.status}` }, 502)
     }
 
     const payload = await azureResponse.json() as AzureOcrResponse
     const text = extractText(payload)
     if (!text) {
-      return json({ error: 'No readable text found in image' }, 422)
+      return json(request, { error: 'No readable text found in image' }, 422)
     }
 
-    return json({
+    return json(request, {
       text,
       detectedLanguage: null,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'OCR request failed'
-    return json({ error: message }, 500)
+    return json(request, { error: message }, getCaughtErrorStatus(error))
   }
 })

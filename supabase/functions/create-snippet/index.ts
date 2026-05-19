@@ -1,7 +1,9 @@
 import {
+  assertAllowedOrigin,
   corsPreflight,
   ensureTags,
   findDuplicateSnippet,
+  getCaughtErrorStatus,
   getServiceClient,
   hydrateSnippet,
   json,
@@ -17,6 +19,7 @@ Deno.serve(async (request) => {
   if (preflight) return preflight
 
   try {
+    assertAllowedOrigin(request)
     const userId = await requireUserId(request)
     const input = await request.json() as Partial<SnippetInput>
     const text = normalizeText(input.text ?? '')
@@ -24,7 +27,7 @@ Deno.serve(async (request) => {
     const tagNames = input.tagNames ?? []
 
     if (!text || !language) {
-      return json({ error: 'Missing required fields' }, 400)
+      return json(request, { error: 'Missing required fields' }, 400)
     }
 
     const supabase = getServiceClient()
@@ -50,13 +53,12 @@ Deno.serve(async (request) => {
     await replaceSnippetTags(supabase, snippetId, tags.map((tag) => tag.id))
     const snippet = await hydrateSnippet(supabase, snippetId)
 
-    return json({
+    return json(request, {
       snippet,
       deduped: Boolean(duplicate),
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Create snippet failed'
-    const status = message === 'auth_required' ? 401 : 500
-    return json({ error: message }, status)
+    return json(request, { error: message }, getCaughtErrorStatus(error))
   }
 })

@@ -1,7 +1,9 @@
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
 import {
+  assertAllowedOrigin,
   assertSupabaseServerEnv,
   corsPreflight,
+  getCaughtErrorStatus,
   getServiceClient,
   json,
   requireUserId,
@@ -23,6 +25,9 @@ const azureSpeechKey = Deno.env.get('AZURE_SPEECH_KEY') ?? ''
 const azureSpeechRegion = Deno.env.get('AZURE_SPEECH_REGION') ?? ''
 const audioCacheBucket = Deno.env.get('AUDIO_CACHE_BUCKET') ?? 'audio-cache'
 const audioCacheTtlDays = Number.parseInt(Deno.env.get('AUDIO_CACHE_TTL_DAYS') ?? '30', 10) || 30
+const maxTextLength = Number.parseInt(Deno.env.get('TTS_MAX_TEXT_LENGTH') ?? '4000', 10) || 4000
+const minSpeed = Number.parseFloat(Deno.env.get('TTS_MIN_SPEED') ?? '0.5') || 0.5
+const maxSpeed = Number.parseFloat(Deno.env.get('TTS_MAX_SPEED') ?? '2') || 2
 
 function getCacheExpiresAt(): string {
   const expiresAt = new Date()
@@ -141,9 +146,10 @@ Deno.serve(async (request) => {
   if (preflight) return preflight
 
   try {
+    assertAllowedOrigin(request)
     assertSupabaseServerEnv()
     if (!azureSpeechKey || !azureSpeechRegion) {
-      return json({ error: 'Azure Speech is not configured' }, 500)
+      return json(request, { error: 'Azure Speech is not configured' }, 500)
     }
 
     await requireUserId(request)
@@ -151,7 +157,7 @@ Deno.serve(async (request) => {
 
     const body = await request.json() as Partial<TtsRequest>
     if (!body.text || !body.language || !body.voice) {
-      return json({ error: 'Missing required fields' }, 400)
+      return json(request, { error: 'Missing required fields' }, 400)
     }
 
     const input: TtsRequest = {
@@ -159,6 +165,13 @@ Deno.serve(async (request) => {
       language: body.language,
       voice: body.voice,
       speed: typeof body.speed === 'number' ? body.speed : 1,
+    }
+
+    if (input.text.length > maxTextLength) {
+      return json(request, { error: `Text exceeds ${maxTextLength} characters` }, 400)
+    }
+    if (Number.isNaN(input.speed) || input.speed < minSpeed || input.speed > maxSpeed) {
+      return json(request, { error: `Speed must be between ${minSpeed} and ${maxSpeed}` }, 400)
     }
 
     const cacheKey = await getCacheKey(input)
@@ -170,16 +183,16 @@ Deno.serve(async (request) => {
         void refreshCacheExpiry(service, cacheKey).catch(() => {
           // Cache expiry refresh is best-effort and should not block playback.
         })
-        return json({ audio: Array.from(cached) })
+        return json(request, { audio: Array.from(cached) })
       }
     }
 
     const audio = await requestAzureAudio(buildSsml(input))
     await upsertCacheEntry(service, cacheKey, audio)
 
-    return json({ audio: Array.from(audio) })
+    return json(request, { audio: Array.from(audio) })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'TTS request failed'
-    return json({ error: message }, 500)
+    return json(request, { error: message }, getCaughtErrorStatus(error))
   }
 })

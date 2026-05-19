@@ -38,6 +38,12 @@ Set these in Supabase Edge Functions:
 - optional: `AUDIO_CACHE_BUCKET=audio-cache`
 - optional: `AUDIO_CACHE_TTL_DAYS=30`
 - optional: `AUDIO_CACHE_CLEANUP_BATCH_SIZE=100`
+- required for normal browser callers: `SUPABASE_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://your-app.example.com`
+- optional: `OCR_MAX_IMAGE_BYTES=5242880`
+- optional: `OCR_ALLOWED_IMAGE_TYPES=image/jpeg,image/png,image/webp,image/heic,image/heif`
+- optional: `TTS_MAX_TEXT_LENGTH=4000`
+- optional: `TTS_MIN_SPEED=0.5`
+- optional: `TTS_MAX_SPEED=2`
 
 For local development, create `supabase/functions/.env` from `supabase/functions/.env.example`.
 
@@ -138,6 +144,12 @@ AZURE_VISION_KEY=your_azure_vision_key_here
 AUDIO_CACHE_BUCKET=audio-cache
 AUDIO_CACHE_TTL_DAYS=30
 AUDIO_CACHE_CLEANUP_BATCH_SIZE=100
+SUPABASE_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://your-app.example.com
+OCR_MAX_IMAGE_BYTES=5242880
+OCR_ALLOWED_IMAGE_TYPES=image/jpeg,image/png,image/webp,image/heic,image/heif
+TTS_MAX_TEXT_LENGTH=4000
+TTS_MIN_SPEED=0.5
+TTS_MAX_SPEED=2
 ```
 
 Do not commit `supabase/functions/.env`.
@@ -177,6 +189,7 @@ Successful response:
 ```
 
 This function requires a valid Supabase bearer token in `Authorization`.
+Normal browser callers also require their `Origin` to be listed in `SUPABASE_ALLOWED_ORIGINS`. Extension origins such as `chrome-extension://...` are allowed automatically.
 
 ### `create-snippet`
 
@@ -267,6 +280,13 @@ Successful response:
 
 Send `multipart/form-data` with an `image` file field.
 
+Validation rules:
+
+- `Authorization` must contain a valid Supabase bearer token
+- the browser `Origin` must be listed in `SUPABASE_ALLOWED_ORIGINS` unless the caller is a browser extension origin such as `chrome-extension://...`
+- the image MIME type must be in `OCR_ALLOWED_IMAGE_TYPES`
+- the image size must not exceed `OCR_MAX_IMAGE_BYTES`
+
 Successful response:
 
 ```json
@@ -277,6 +297,7 @@ Successful response:
 ```
 
 This function requires a valid Supabase bearer token in `Authorization`.
+Normal browser callers also require their `Origin` to be listed in `SUPABASE_ALLOWED_ORIGINS`. Extension origins such as `chrome-extension://...` are allowed automatically.
 
 ### `cleanup-audio-cache`
 
@@ -299,6 +320,8 @@ Successful response:
 The `cleanup-audio-cache` Edge Function needs to run on a schedule to delete expired audio files and free up Storage space.
 
 This repository includes a GitHub Actions workflow (`.github/workflows/cleanup.yaml`) that runs automatically every hour to trigger this cleanup.
+
+Additional security automation lives in `.github/workflows/security.yml` and runs dependency review, CodeQL, workflow linting, and npm audit checks.
 
 To use the GitHub Actions cron job, you must set the following **Repository Secret** in your GitHub repository settings (`Settings -> Secrets and variables -> Actions`):
 

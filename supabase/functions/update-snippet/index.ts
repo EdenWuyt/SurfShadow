@@ -1,7 +1,9 @@
 import {
+  assertAllowedOrigin,
   corsPreflight,
   ensureTags,
   findDuplicateSnippet,
+  getCaughtErrorStatus,
   getServiceClient,
   hydrateSnippet,
   json,
@@ -17,6 +19,7 @@ Deno.serve(async (request) => {
   if (preflight) return preflight
 
   try {
+    assertAllowedOrigin(request)
     const userId = await requireUserId(request)
     const input = await request.json() as Partial<SnippetInput> & { snippetId?: string }
     const snippetId = input.snippetId?.trim() ?? ''
@@ -25,7 +28,7 @@ Deno.serve(async (request) => {
     const tagNames = input.tagNames ?? []
 
     if (!snippetId || !text || !language) {
-      return json({ error: 'Missing required fields' }, 400)
+      return json(request, { error: 'Missing required fields' }, 400)
     }
 
     const supabase = getServiceClient()
@@ -38,12 +41,12 @@ Deno.serve(async (request) => {
 
     if (currentError) throw currentError
     if (!currentSnippet) {
-      return json({ error: 'Snippet not found' }, 404)
+      return json(request, { error: 'Snippet not found' }, 404)
     }
 
     const duplicate = await findDuplicateSnippet(supabase, userId, text, language)
     if (duplicate && duplicate.id !== snippetId) {
-      return json({ error: 'Duplicate snippet already exists' }, 409)
+      return json(request, { error: 'Duplicate snippet already exists' }, 409)
     }
 
     const { error: updateError } = await supabase
@@ -61,10 +64,9 @@ Deno.serve(async (request) => {
     await replaceSnippetTags(supabase, snippetId, tags.map((tag) => tag.id))
     const snippet = await hydrateSnippet(supabase, snippetId)
 
-    return json({ snippet })
+    return json(request, { snippet })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Update snippet failed'
-    const status = message === 'auth_required' ? 401 : 500
-    return json({ error: message }, status)
+    return json(request, { error: message }, getCaughtErrorStatus(error))
   }
 })

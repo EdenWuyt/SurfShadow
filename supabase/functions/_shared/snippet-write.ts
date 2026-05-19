@@ -1,5 +1,12 @@
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2'
-export { corsPreflight, getServiceClient, json, requireUserId } from './runtime.ts'
+export {
+  assertAllowedOrigin,
+  corsPreflight,
+  getCaughtErrorStatus,
+  getServiceClient,
+  json,
+  requireUserId,
+} from './runtime.ts'
 
 interface SnippetRow {
   id: string

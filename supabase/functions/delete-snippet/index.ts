@@ -1,5 +1,7 @@
 import {
+  assertAllowedOrigin,
   corsPreflight,
+  getCaughtErrorStatus,
   getServiceClient,
   json,
   normalizeLanguage,
@@ -12,6 +14,7 @@ Deno.serve(async (request) => {
   if (preflight) return preflight
 
   try {
+    assertAllowedOrigin(request)
     const userId = await requireUserId(request)
     const input = await request.json() as {
       snippetId?: string
@@ -32,11 +35,11 @@ Deno.serve(async (request) => {
         .eq('user_id', userId)
 
       if (error) throw error
-      return json({ success: true })
+      return json(request, { success: true })
     }
 
     if (!text || !language) {
-      return json({ error: 'Missing snippetId or text/language' }, 400)
+      return json(request, { error: 'Missing snippetId or text/language' }, 400)
     }
 
     const { error } = await supabase
@@ -47,10 +50,9 @@ Deno.serve(async (request) => {
       .eq('language', language)
 
     if (error) throw error
-    return json({ success: true })
+    return json(request, { success: true })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Delete snippet failed'
-    const status = message === 'auth_required' ? 401 : 500
-    return json({ error: message }, status)
+    return json(request, { error: message }, getCaughtErrorStatus(error))
   }
 })

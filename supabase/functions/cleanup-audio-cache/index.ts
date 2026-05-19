@@ -1,4 +1,11 @@
-import { assertSupabaseServerEnv, corsPreflight, getServiceClient, json } from '../_shared/runtime.ts'
+import {
+  assertAllowedOrigin,
+  assertSupabaseServerEnv,
+  corsPreflight,
+  getCaughtErrorStatus,
+  getServiceClient,
+  json,
+} from '../_shared/runtime.ts'
 
 const tableName = 'audio_cache'
 const bucketName = Deno.env.get('AUDIO_CACHE_BUCKET') ?? 'audio-cache'
@@ -54,6 +61,7 @@ Deno.serve(async (request) => {
   if (preflight) return preflight
 
   try {
+    assertAllowedOrigin(request)
     assertSupabaseServerEnv()
     await assertConnection()
 
@@ -64,7 +72,7 @@ Deno.serve(async (request) => {
     await deleteStorageObjects(paths)
     await deleteCacheRows(ids)
 
-    return json({
+    return json(request, {
       ok: true,
       connected: true,
       deleted_rows: ids.length,
@@ -73,6 +81,6 @@ Deno.serve(async (request) => {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Cleanup failed'
-    return json({ ok: false, connected: false, error: message }, 500)
+    return json(request, { ok: false, connected: false, error: message }, getCaughtErrorStatus(error))
   }
 })
