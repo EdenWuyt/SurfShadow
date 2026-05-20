@@ -10,6 +10,13 @@ import {
   removePracticeRecordingRecord,
   savePracticeRecordingRecord,
 } from '@/features/practice/repositories/practice-recording-repository'
+import {
+  cancelNativeRecording,
+  canUseNativeRecorder,
+  requestNativeRecorderPermission,
+  startNativeRecording,
+  stopNativeRecording,
+} from '@/features/practice/api/native-recorder'
 import { requestTtsAudio } from '@/features/audio/api/tts-api'
 import { playSourceSnippet } from '@/features/audio/lib/source-playback'
 import { cancelSystemSpeech } from '@/features/audio/lib/system-speech'
@@ -90,6 +97,7 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
   const [isSourcePlaying, setIsSourcePlaying] = useState(false)
   const [micAllowed, setMicAllowed] = useState(true)
   const [loadingRecordings, setLoadingRecordings] = useState(true)
+  const usesNativeRecorder = canUseNativeRecorder()
 
   const snippetQuery = useQuery({
     queryKey: snippetQueryKeys.detail(snippetId),
@@ -155,6 +163,9 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
       mounted = false
       playbackTokenRef.current += 1
       void cancelSystemSpeech()
+      if (usesNativeRecorder) {
+        void cancelNativeRecording().catch(() => undefined)
+      }
       // Unmount only needs to silence and release the current players; rewinding them has no value once the hook is disposing.
       pauseAudioRef(audioRef)
       pauseAudioRef(draftAudioRef)
@@ -217,6 +228,27 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
    * Starts microphone capture and keeps the unsaved draft local until the user explicitly saves it.
    */
   async function startRecording(): Promise<void> {
+    if (usesNativeRecorder) {
+      try {
+        const granted = await requestNativeRecorderPermission()
+        if (!granted) {
+          setMicAllowed(false)
+          showError(new Error('Microphone permission is blocked.'), 'Microphone permission is blocked. You can still listen and review saved attempts.')
+          return
+        }
+
+        setMicAllowed(true)
+        setDraftRecording(null)
+        await startNativeRecording()
+        setIsRecording(true)
+        return
+      } catch (reason) {
+        setMicAllowed(false)
+        showError(reason, 'Unable to start recording. You can still listen and review saved attempts.')
+        return
+      }
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       setMicAllowed(true)
@@ -243,11 +275,24 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
       setIsRecording(true)
     } catch (reason) {
       setMicAllowed(false)
-      showError(reason, 'Microphone permission is blocked. You can still listen and review saved attempts.')
+      showError(reason, 'Unable to start recording. You can still listen and review saved attempts.')
     }
   }
 
-  function stopRecording(): void {
+  async function stopRecording(): Promise<void> {
+    if (usesNativeRecorder) {
+      try {
+        const blob = await stopNativeRecording()
+        setDraftRecording(blob)
+        stopDraftPlayback()
+        setIsRecording(false)
+      } catch (reason) {
+        setIsRecording(false)
+        showError(reason, 'Unable to stop recording')
+      }
+      return
+    }
+
     recorderRef.current?.stop()
   }
 
@@ -388,8 +433,7 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
     onSaveDraft,
     onToggleRecording: () => {
       if (isRecording) {
-        stopRecording()
-        return
+        return stopRecording()
       }
       return startRecording()
     },
