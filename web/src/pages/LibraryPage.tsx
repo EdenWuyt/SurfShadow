@@ -12,7 +12,7 @@ import { compactSelectClass } from '@/styles/recipes'
 export default function LibraryPage(): JSX.Element {
   const {
     activePlayback,
-    deleteError,
+    actionError,
     deleting,
     loading,
     onDelete,
@@ -35,7 +35,7 @@ export default function LibraryPage(): JSX.Element {
           {queryError instanceof Error ? queryError.message : 'Failed to load snippets'}
         </PageMessage>
       ) : null}
-      {deleteError ? <Notice variant="error">{deleteError}</Notice> : null}
+      {actionError ? <Notice variant="error">{actionError}</Notice> : null}
 
       <div className="flex items-center justify-between gap-3">
         <p className="meta-label">

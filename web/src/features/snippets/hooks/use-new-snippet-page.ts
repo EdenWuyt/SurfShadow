@@ -8,6 +8,7 @@ import { listSavedTags } from '@/features/tags/repositories/tag-repository'
 import { sanitizeInlineText } from '@/lib/sanitize'
 import { LANGUAGES } from '@/shared/languages'
 import type { SnippetMutation, Tag } from '@/shared/types'
+import { canUseNativeCamera, captureOcrImage } from '@/features/snippets/api/camera-api'
 import { extractSnippetText } from '@/features/snippets/api/ocr-api'
 import { showError, showSuccess } from '@/stores/feedback-store'
 
@@ -23,7 +24,9 @@ function resolveLanguageCode(languageCode: string | null): string {
 }
 
 interface UseNewSnippetPageResult {
+  canUseNativeCamera: boolean
   draft: SnippetMutation
+  onCaptureImage: () => Promise<void>
   isExtractingOcr: boolean
   isSubmitting: boolean
   onCancel: () => void
@@ -108,8 +111,23 @@ export function useNewSnippetPage(): UseNewSnippetPageResult {
     }
   }
 
+  /**
+   * Native camera capture is converted into the same File-based OCR path so mobile and web stay aligned after capture.
+   */
+  async function onCaptureImage(): Promise<void> {
+    try {
+      const imageFile = await captureOcrImage()
+      if (!imageFile) return
+      await onImageSelected(imageFile)
+    } catch (reason) {
+      showError(reason, 'Unable to capture image')
+    }
+  }
+
   return {
+    canUseNativeCamera: canUseNativeCamera(),
     draft,
+    onCaptureImage,
     isExtractingOcr,
     isSubmitting: createMutation.isPending,
     onCancel: () => navigate('/'),

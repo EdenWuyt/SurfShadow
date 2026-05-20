@@ -116,6 +116,7 @@ Notes:
 
 - the APK bundles the built frontend locally, so a separate frontend deployment is not required
 - the app still depends on your deployed Supabase project, Edge Functions, Storage, and auth setup
+- Supabase Auth redirect URLs must include `com.surfshadow.app://auth/callback` for Google sign-in inside the Android wrapper
 - microphone-based practice recording depends on Android runtime permission prompts inside the WebView shell
 - Android Studio and an Android SDK/device are required to build and install the APK
 

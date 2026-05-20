@@ -7,11 +7,11 @@ import {
   updateLibrarySearchParams,
 } from '@/features/library/lib/library-search'
 import { sanitizeSnippetSortOrder } from '@/lib/sanitize'
-import { getVoiceForTone } from '@/shared/languages'
 import type { PlaybackMode, Snippet, SnippetPage } from '@/shared/types'
 import { snippetQueryKeys } from '@/features/snippets/hooks/snippet-query-keys'
 import { listSnippetsPage, removeSnippetRecord } from '@/features/snippets/repositories/snippet-repository'
-import { requestTtsAudio } from '@/features/audio/api/tts-api'
+import { playSourceSnippet } from '@/features/audio/lib/source-playback'
+import { cancelSystemSpeech } from '@/features/audio/lib/system-speech'
 import { showError, showSuccess } from '@/stores/feedback-store'
 
 const PAGE_SIZE = 8
@@ -23,7 +23,7 @@ interface ActivePlayback {
 
 interface UseLibraryPageResult {
   activePlayback: ActivePlayback | null
-  deleteError: string | null
+  actionError: string | null
   deleting: boolean
   onDelete: (snippetId: string) => Promise<void>
   onOrderChange: (nextOrder: string) => void
@@ -46,7 +46,7 @@ export function useLibraryPage(): UseLibraryPageResult {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const playbackTokenRef = useRef(0)
   const [searchParams, setSearchParams] = useSearchParams()
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [activePlayback, setActivePlayback] = useState<ActivePlayback | null>(null)
   const urlFilters = getLibraryFiltersFromSearchParams(searchParams)
   const deferredSearch = useDeferredValue(urlFilters.search ?? '')
@@ -71,14 +71,14 @@ export function useLibraryPage(): UseLibraryPageResult {
       showSuccess('Snippet deleted.')
     },
     onError: (reason: unknown) => {
-      setDeleteError(showError(reason, 'Failed to delete snippet'))
+      setActionError(showError(reason, 'Failed to delete snippet'))
     },
   })
 
   useEffect(
     () => () => {
       playbackTokenRef.current += 1
-      speechSynthesis.cancel()
+      void cancelSystemSpeech()
       if (audioRef.current) {
         audioRef.current.pause()
         audioRef.current = null
@@ -92,7 +92,7 @@ export function useLibraryPage(): UseLibraryPageResult {
    */
   function stopPlayback(): void {
     playbackTokenRef.current += 1
-    speechSynthesis.cancel()
+    void cancelSystemSpeech()
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.currentTime = 0
@@ -105,7 +105,7 @@ export function useLibraryPage(): UseLibraryPageResult {
    * Deletes one snippet and keeps the inline library error near the card grid when the mutation fails.
    */
   async function onDelete(snippetId: string): Promise<void> {
-    setDeleteError(null)
+    setActionError(null)
     try {
       await deleteMutation.mutateAsync(snippetId)
     } catch (reason) {
@@ -114,7 +114,8 @@ export function useLibraryPage(): UseLibraryPageResult {
   }
 
   /**
-   * Plays either browser speech synthesis or server TTS while guarding stale async completions with one token owner.
+   * The library owns only one source-playback channel at a time.
+   * The token protects against late system-speech or TTS completions after the user has already stopped or switched snippets.
    */
   async function onPlay(snippet: Snippet, mode: PlaybackMode): Promise<void> {
     if (activePlayback?.snippetId === snippet.id && activePlayback.mode === mode) {
@@ -126,50 +127,22 @@ export function useLibraryPage(): UseLibraryPageResult {
     const token = playbackTokenRef.current + 1
     playbackTokenRef.current = token
     setActivePlayback({ snippetId: snippet.id, mode })
-
     try {
-      if (mode === 'system') {
-        const utterance = new SpeechSynthesisUtterance(snippet.text)
-        utterance.lang = snippet.language
-        utterance.rate = 1
-        utterance.onend = () => {
-          if (playbackTokenRef.current === token) setActivePlayback(null)
-        }
-        utterance.onerror = () => {
-          if (playbackTokenRef.current === token) setActivePlayback(null)
-        }
-        speechSynthesis.speak(utterance)
-        return
-      }
-
-      const audio = await requestTtsAudio({
-        text: snippet.text,
-        language: snippet.language,
-        voice: getVoiceForTone(snippet.language, mode === 'neutral' ? 'neutral' : 'casual'),
-        speed: 1,
+      /**
+       * The library page keeps one shared inline error surface, so playback capability failures land beside delete failures.
+       */
+      await playSourceSnippet({
+        audioRef,
+        isTokenCurrent: () => playbackTokenRef.current === token,
+        mode,
+        onStop: () => setActivePlayback(null),
+        onSystemUnavailable: () => {
+          setActionError(showError(new Error('System speech is unavailable on this device'), 'System speech is unavailable on this device'))
+        },
+        snippet,
       })
-
-      if (playbackTokenRef.current !== token) return
-
-      const blob = new Blob([Uint8Array.from(audio).buffer], { type: 'audio/mpeg' })
-      const url = URL.createObjectURL(blob)
-      const player = new Audio(url)
-      audioRef.current = player
-      await player.play()
-      player.onerror = () => {
-        if (audioRef.current === player) audioRef.current = null
-        if (playbackTokenRef.current === token) {
-          setActivePlayback(null)
-          setDeleteError(showError(new Error('Unable to play snippet audio'), 'Unable to play snippet audio'))
-        }
-      }
-      player.onended = () => {
-        URL.revokeObjectURL(url)
-        if (audioRef.current === player) audioRef.current = null
-        if (playbackTokenRef.current === token) setActivePlayback(null)
-      }
     } catch (reason) {
-      setDeleteError(showError(reason, 'Unable to play snippet audio'))
+      setActionError(showError(reason, 'Unable to play snippet audio'))
       setActivePlayback(null)
     } finally {
       if (playbackTokenRef.current !== token) {
@@ -200,7 +173,7 @@ export function useLibraryPage(): UseLibraryPageResult {
 
   return {
     activePlayback,
-    deleteError,
+    actionError,
     deleting: deleteMutation.isPending,
     loading: snippetsQuery.isLoading,
     onDelete,

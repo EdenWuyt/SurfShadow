@@ -5,7 +5,19 @@ import { SnippetForm } from '@/features/snippets/components/SnippetForm'
 import { useNewSnippetPage } from '@/features/snippets/hooks/use-new-snippet-page'
 
 export default function NewSnippetPage(): JSX.Element {
-  const { draft, isExtractingOcr, isSubmitting, onCancel, onChange, onImageSelected, onSubmit, saveError, tagsQuery } =
+  const {
+    canUseNativeCamera,
+    draft,
+    isExtractingOcr,
+    isSubmitting,
+    onCancel,
+    onCaptureImage,
+    onChange,
+    onImageSelected,
+    onSubmit,
+    saveError,
+    tagsQuery,
+  } =
     useNewSnippetPage()
 
   return (
@@ -13,9 +25,11 @@ export default function NewSnippetPage(): JSX.Element {
       <SnippetForm
         availableTags={tagsQuery.data ?? []}
         canUseOcr
+        canUseNativeCamera={canUseNativeCamera}
         isExtractingOcr={isExtractingOcr}
         isSubmitting={isSubmitting}
         onCancel={onCancel}
+        onCaptureImage={onCaptureImage}
         onChange={onChange}
         onImageSelected={onImageSelected}
         onSubmit={onSubmit}

@@ -1,7 +1,16 @@
+import { Browser } from '@capacitor/browser'
+import { App as CapacitorApp } from '@capacitor/app'
+import { Capacitor } from '@capacitor/core'
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { Profile } from '@/shared/types'
-import { getCurrentSession, signInWithGoogle, signOutCurrentUser, subscribeToAuthChanges } from '@/features/auth/api/supabase-auth-client'
+import {
+  getCurrentSession,
+  restoreSessionFromCallbackUrl,
+  signInWithGoogle,
+  signOutCurrentUser,
+  subscribeToAuthChanges,
+} from '@/features/auth/api/supabase-auth-client'
 import { ensureCurrentProfile } from '@/features/auth/use-cases/ensure-current-profile'
 import { showError } from '@/stores/feedback-store'
 
@@ -28,6 +37,7 @@ export function useAuthSession(): AuthSessionState {
 
   useEffect(() => {
     let mounted = true
+    let removeAppListener: (() => void) | null = null
 
     /**
      * Loads the session first, then hydrates the matching profile so the provider exposes one consistent auth snapshot.
@@ -59,8 +69,40 @@ export function useAuthSession(): AuthSessionState {
       void syncSession(nextSession, true)
     })
 
+    /**
+     * Native OAuth returns through an app deep link, so the callback URL must be turned into a Supabase session explicitly.
+     */
+    async function hydrateSessionFromCallbackUrl(url: string): Promise<void> {
+      try {
+        await Browser.close().catch(() => undefined)
+        const restoredSession = await restoreSessionFromCallbackUrl(url)
+        if (!mounted || !restoredSession) return
+        void syncSession(restoredSession, true)
+      } catch (reason) {
+        if (!mounted) return
+        showError(reason, 'Unable to finish Google sign-in')
+      }
+    }
+
+    if (Capacitor.isNativePlatform()) {
+      void CapacitorApp.getLaunchUrl().then((launchUrl) => {
+        if (!mounted || !launchUrl?.url) return
+        void hydrateSessionFromCallbackUrl(launchUrl.url)
+      })
+
+      void CapacitorApp.addListener('appUrlOpen', ({ url }) => {
+        if (!mounted || !url) return
+        void hydrateSessionFromCallbackUrl(url)
+      }).then((listener) => {
+        removeAppListener = () => {
+          void listener.remove()
+        }
+      })
+    }
+
     return () => {
       mounted = false
+      removeAppListener?.()
       unsubscribe()
     }
   }, [])

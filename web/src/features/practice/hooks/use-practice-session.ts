@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getVoiceForTone } from '@/shared/languages'
 import type { PlaybackMode, PracticeRecording, Snippet } from '@/shared/types'
@@ -11,6 +11,8 @@ import {
   savePracticeRecordingRecord,
 } from '@/features/practice/repositories/practice-recording-repository'
 import { requestTtsAudio } from '@/features/audio/api/tts-api'
+import { playSourceSnippet } from '@/features/audio/lib/source-playback'
+import { cancelSystemSpeech } from '@/features/audio/lib/system-speech'
 import { showError, showSuccess } from '@/stores/feedback-store'
 
 function playBlob(blob: Blob): Promise<void> {
@@ -28,6 +30,18 @@ function playBlob(blob: Blob): Promise<void> {
 function playBytes(bytes: Uint8Array): Promise<void> {
   const normalizedBytes = Uint8Array.from(bytes)
   return playBlob(new Blob([normalizedBytes.buffer], { type: 'audio/mpeg' }))
+}
+
+function stopAudioRef(audioRef: RefObject<HTMLAudioElement | null>): void {
+  if (!audioRef.current) return
+  audioRef.current.pause()
+  audioRef.current.currentTime = 0
+  audioRef.current = null
+}
+
+function pauseAudioRef(audioRef: RefObject<HTMLAudioElement | null>): void {
+  audioRef.current?.pause()
+  audioRef.current = null
 }
 
 interface UsePracticeSessionResult {
@@ -67,6 +81,7 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
   const [recordings, setRecordings] = useState<PracticeRecording[]>([])
   const [draftRecording, setDraftRecording] = useState<Blob | null>(null)
   const [activeSavedRecordingId, setActiveSavedRecordingId] = useState<string | null>(null)
+  // This error state is only for the saved-attempt delete confirm flow and stays local to that modal path.
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deletingRecordingId, setDeletingRecordingId] = useState<string | null>(null)
   const [isDraftPlaying, setIsDraftPlaying] = useState(false)
@@ -80,6 +95,43 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
     queryKey: snippetQueryKeys.detail(snippetId),
     queryFn: () => getSnippetDetail(snippetId),
   })
+
+  /**
+   * Source, unsaved draft, and saved-attempt playback are mutually exclusive so the user hears only one channel at a time.
+   */
+  function stopNonSourcePlayback(): void {
+    stopDraftPlayback()
+    stopSavedPlayback()
+  }
+
+  /**
+   * Shared audio-element wiring keeps the three playback channels on one consistent start/end/error contract.
+   */
+  async function playAudioUrl(
+    url: string,
+    audioTarget: RefObject<HTMLAudioElement | null>,
+    onStart: () => void,
+    onStop: () => void,
+    failureMessage: string,
+  ): Promise<void> {
+    const audio = new Audio(url)
+    audioTarget.current = audio
+    onStart()
+
+    await new Promise<void>((resolve, reject) => {
+      audio.onended = () => {
+        if (audioTarget.current === audio) audioTarget.current = null
+        onStop()
+        resolve()
+      }
+      audio.onerror = () => {
+        if (audioTarget.current === audio) audioTarget.current = null
+        onStop()
+        reject(new Error(failureMessage))
+      }
+      void audio.play().catch(reject)
+    })
+  }
 
   useEffect(() => {
     let mounted = true
@@ -102,45 +154,35 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
     return () => {
       mounted = false
       playbackTokenRef.current += 1
-      speechSynthesis.cancel()
-      audioRef.current?.pause()
-      draftAudioRef.current?.pause()
-      savedAudioRef.current?.pause()
+      void cancelSystemSpeech()
+      // Unmount only needs to silence and release the current players; rewinding them has no value once the hook is disposing.
+      pauseAudioRef(audioRef)
+      pauseAudioRef(draftAudioRef)
+      pauseAudioRef(savedAudioRef)
       streamRef.current?.getTracks().forEach((track) => track.stop())
     }
   }, [snippetId])
 
   function stopSourcePlayback(): void {
     playbackTokenRef.current += 1
-    speechSynthesis.cancel()
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-      audioRef.current = null
-    }
+    void cancelSystemSpeech()
+    stopAudioRef(audioRef)
     setIsSourcePlaying(false)
   }
 
   function stopDraftPlayback(): void {
-    if (draftAudioRef.current) {
-      draftAudioRef.current.pause()
-      draftAudioRef.current.currentTime = 0
-      draftAudioRef.current = null
-    }
+    stopAudioRef(draftAudioRef)
     setIsDraftPlaying(false)
   }
 
   function stopSavedPlayback(): void {
-    if (savedAudioRef.current) {
-      savedAudioRef.current.pause()
-      savedAudioRef.current.currentTime = 0
-      savedAudioRef.current = null
-    }
+    stopAudioRef(savedAudioRef)
     setActiveSavedRecordingId(null)
   }
 
   /**
-   * Plays source audio from either browser speech synthesis or server TTS and rejects stale callbacks with one token.
+   * Source playback is shared with the library hook, but practice still owns which other channels must be stopped first.
+   * The playback token keeps one source request authoritative when the user taps stop, changes mode, or starts another clip.
    */
   async function onToggleSourcePlayback(): Promise<void> {
     const snippet = snippetQuery.data ?? null
@@ -150,49 +192,21 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
       return
     }
 
-    stopDraftPlayback()
-    stopSavedPlayback()
+    stopNonSourcePlayback()
     const token = playbackTokenRef.current + 1
     playbackTokenRef.current = token
     setIsSourcePlaying(true)
-
     try {
-      if (playbackMode === 'system') {
-        const utterance = new SpeechSynthesisUtterance(snippet.text)
-        utterance.lang = snippet.language
-        utterance.rate = 1
-        utterance.onend = () => {
-          if (playbackTokenRef.current === token) setIsSourcePlaying(false)
-        }
-        utterance.onerror = () => {
-          if (playbackTokenRef.current === token) {
-            setIsSourcePlaying(false)
-            showError(new Error('Unable to play source audio'), 'Unable to play source audio')
-          }
-        }
-        speechSynthesis.speak(utterance)
-        return
-      }
-
-      const audio = await requestTtsAudio({
-        text: snippet.text,
-        language: snippet.language,
-        voice: getVoiceForTone(snippet.language, playbackMode === 'neutral' ? 'neutral' : 'casual'),
-        speed: 1,
+      await playSourceSnippet({
+        audioRef,
+        isTokenCurrent: () => playbackTokenRef.current === token,
+        mode: playbackMode,
+        onStop: () => setIsSourcePlaying(false),
+        onSystemUnavailable: () => {
+          showError(new Error('System speech is unavailable on this device'), 'System speech is unavailable on this device')
+        },
+        snippet,
       })
-
-      if (playbackTokenRef.current !== token) return
-
-      const blob = new Blob([Uint8Array.from(audio).buffer], { type: 'audio/mpeg' })
-      const url = URL.createObjectURL(blob)
-      const player = new Audio(url)
-      audioRef.current = player
-      await player.play()
-      player.onended = () => {
-        URL.revokeObjectURL(url)
-        if (audioRef.current === player) audioRef.current = null
-        if (playbackTokenRef.current === token) setIsSourcePlaying(false)
-      }
     } catch (reason) {
       setIsSourcePlaying(false)
       showError(reason, 'Unable to play source audio')
@@ -268,24 +282,16 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
     stopSavedPlayback()
     try {
       const url = URL.createObjectURL(draftRecording)
-      const audio = new Audio(url)
-      draftAudioRef.current = audio
-      setIsDraftPlaying(true)
-      await new Promise<void>((resolve, reject) => {
-        audio.onended = () => {
+      await playAudioUrl(
+        url,
+        draftAudioRef,
+        () => setIsDraftPlaying(true),
+        () => {
           URL.revokeObjectURL(url)
-          if (draftAudioRef.current === audio) draftAudioRef.current = null
           setIsDraftPlaying(false)
-          resolve()
-        }
-        audio.onerror = () => {
-          URL.revokeObjectURL(url)
-          if (draftAudioRef.current === audio) draftAudioRef.current = null
-          setIsDraftPlaying(false)
-          reject(new Error('Unable to play draft recording'))
-        }
-        void audio.play().catch(reject)
-      })
+        },
+        'Unable to play draft recording',
+      )
     } catch (reason) {
       showError(reason, 'Unable to play draft recording')
     }
@@ -298,23 +304,13 @@ export function usePracticeSession(snippetId: string, userId: string | null): Us
     setDeleteError(null)
 
     const url = await getPracticeRecordingPlaybackUrl(recording.storage_path)
-    const audio = new Audio(url)
-    savedAudioRef.current = audio
-    setActiveSavedRecordingId(recording.id)
-
-    await new Promise<void>((resolve, reject) => {
-      audio.onended = () => {
-        if (savedAudioRef.current === audio) savedAudioRef.current = null
-        setActiveSavedRecordingId(null)
-        resolve()
-      }
-      audio.onerror = () => {
-        if (savedAudioRef.current === audio) savedAudioRef.current = null
-        setActiveSavedRecordingId(null)
-        reject(new Error('Unable to play saved attempt'))
-      }
-      void audio.play().catch(reject)
-    })
+    await playAudioUrl(
+      url,
+      savedAudioRef,
+      () => setActiveSavedRecordingId(recording.id),
+      () => setActiveSavedRecordingId(null),
+      'Unable to play saved attempt',
+    )
   }
 
   /**

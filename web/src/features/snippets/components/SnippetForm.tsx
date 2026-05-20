@@ -42,9 +42,11 @@ import {
 interface SnippetFormProps {
   availableTags: Tag[]
   canUseOcr?: boolean
+  canUseNativeCamera?: boolean
   isExtractingOcr?: boolean
   isSubmitting?: boolean
   onCancel?: () => void
+  onCaptureImage?: () => Promise<void>
   onImageSelected?: (file: File) => Promise<void>
   onSubmit: () => Promise<void>
   submitLabel: string
@@ -55,9 +57,11 @@ interface SnippetFormProps {
 export function SnippetForm({
   availableTags,
   canUseOcr = false,
+  canUseNativeCamera = false,
   isExtractingOcr = false,
   isSubmitting = false,
   onCancel,
+  onCaptureImage,
   onImageSelected,
   onSubmit,
   submitLabel,
@@ -118,6 +122,15 @@ export function SnippetForm({
     await onImageSelected(file)
   }
 
+  async function handleCameraAction(): Promise<void> {
+    if (canUseNativeCamera && onCaptureImage) {
+      await onCaptureImage()
+      return
+    }
+
+    cameraInputRef.current?.click()
+  }
+
   return (
     <form
       className="grid gap-4"
@@ -170,7 +183,9 @@ export function SnippetForm({
             <div className={snippetFormOcrActionsClass}>
               <Button
                 disabled={isExtractingOcr}
-                onClick={() => cameraInputRef.current?.click()}
+                onClick={() => {
+                  void handleCameraAction()
+                }}
                 type="button"
                 variant="outline"
               >
